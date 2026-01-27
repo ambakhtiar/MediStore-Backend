@@ -7,8 +7,9 @@
     "type": "module",
     "main": "index.js",
     "scripts": {
-        "dev": "tsx watch src/server.ts",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "dev": "npx tsx watch src/server.ts",
+        "seed:admin": "npx tsx src/script/seedAdmin.ts"
     },
     "dependencies": {
         "@prisma/adapter-pg": "^7.3.0",
