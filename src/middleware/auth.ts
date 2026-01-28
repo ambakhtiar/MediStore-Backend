@@ -38,6 +38,7 @@ const auth = (...rules: UserRole[]) => {
         }
 
         if (rules.length && !rules.includes(req.user.role as UserRole)) {
+            console.log(rules, req.user);
             return res.status(403).json({
                 success: false,
                 message: "Forbidden! Access Denied!"
