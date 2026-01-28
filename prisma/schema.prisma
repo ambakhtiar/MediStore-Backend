@@ -1,94 +1,228 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// This is your Prisma schema file
+// https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+    provider = "prisma-client"
+    output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+    provider = "postgresql"
 }
 
-model Medicine {
-  id           String   @id @default(uuid())
-  name         String
-  description  String
-  price        Float
-  stock        Int
-  manufacturer String
-  imageUrl     String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+// ENUMS
+
+enum UserRole {
+    CUSTOMER
+    SELLER
+    ADMIN
 }
+
+enum UserStatus {
+    UNBAN
+    BANNED
+}
+
+enum OrderStatus {
+    PLACED
+    PROCESSING
+    SHIPPED
+    DELIVERED
+    CANCELLED
+}
+
+// MODELS
 
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+    id            String     @id @default(uuid())
+    name          String
+    email         String     @unique
+    password      String?
+    emailVerified Boolean    @default(false)
+    image         String?
+    phone         String?
+    role          UserRole   @default(CUSTOMER)
+    status        UserStatus @default(UNBAN)
+    createdAt     DateTime   @default(now())
+    updatedAt     DateTime   @updatedAt
 
-  role   String? @default("customer")
-  phone  String?
-  status String? @default("ACTIVE")
+    // relations
+    sessions        Session[]
+    accounts        Account[]
+    cart            Cart?
+    sellerMedicines Medicine[] @relation("SellerMedicines")
+    orders          Order[]
+    reviews         Review[]
 
-  @@unique([email])
-  @@map("user")
+    @@map("user")
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id        String   @id @default(uuid())
+    expiresAt DateTime
+    token     String   @unique
+    ipAddress String?
+    userAgent String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
-  @@unique([token])
-  @@index([userId])
-  @@map("session")
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@map("session")
 }
 
 model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+    id                    String    @id @default(uuid())
+    accountId             String
+    providerId            String
+    accessToken           String?
+    refreshToken          String?
+    idToken               String?
+    accessTokenExpiresAt  DateTime?
+    refreshTokenExpiresAt DateTime?
+    scope                 String?
+    password              String?
+    createdAt             DateTime  @default(now())
+    updatedAt             DateTime  @updatedAt
 
-  @@index([userId])
-  @@map("account")
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@map("account")
 }
 
 model Verification {
-  id         String   @id
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+    id         String   @id @default(uuid())
+    identifier String
+    value      String
+    expiresAt  DateTime
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
 
-  @@index([identifier])
-  @@map("verification")
+    @@index([identifier])
+    @@map("verification")
+}
+
+model Category {
+    id          String   @id @default(uuid())
+    name        String   @unique
+    slug        String?  @unique
+    description String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+
+    medicines Medicine[]
+
+    @@map("category")
+}
+
+model Medicine {
+    id           String   @id @default(uuid())
+    name         String
+    genericName  String?
+    description  String?
+    price        Float
+    stock        Int
+    manufacturer String?
+    imageUrl     String?
+    isActive     Boolean  @default(true)
+    createdAt    DateTime @default(now())
+    updatedAt    DateTime @updatedAt
+
+    categoryId String?
+    category   Category?   @relation(fields: [categoryId], references: [id])
+    sellerId   String?
+    seller     User?       @relation("SellerMedicines", fields: [sellerId], references: [id])
+    cartItems  CartItem[]
+    orderItems OrderItem[]
+    reviews    Review[]
+
+    @@index([name])
+    @@index([categoryId])
+    @@map("medicine")
+}
+
+model Cart {
+    id        String     @id @default(uuid())
+    userId    String     @unique
+    user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+    items     CartItem[]
+    createdAt DateTime   @default(now())
+    updatedAt DateTime   @updatedAt
+
+    @@map("cart")
+}
+
+model CartItem {
+    id         String   @id @default(uuid())
+    cartId     String
+    medicineId String
+    quantity   Int
+    unitPrice  Float
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    cart     Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+    medicine Medicine @relation(fields: [medicineId], references: [id])
+
+    @@unique([cartId, medicineId])
+    @@index([cartId])
+    @@index([medicineId])
+    @@map("cart_item")
+}
+
+model Order {
+    id              String      @id @default(uuid())
+    userId          String
+    total           Float
+    status          OrderStatus @default(PLACED)
+    shippingName    String?
+    shippingPhone   String?
+    shippingAddress String
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @updatedAt
+
+    user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+    items OrderItem[]
+
+    @@index([userId])
+    @@index([status])
+    @@map("order")
+}
+
+model OrderItem {
+    id         String   @id @default(uuid())
+    orderId    String
+    medicineId String
+    quantity   Int
+    unitPrice  Float
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    medicine Medicine @relation(fields: [medicineId], references: [id])
+
+    @@index([orderId])
+    @@index([medicineId])
+    @@map("order_item")
+}
+
+model Review {
+    id         String   @id @default(uuid())
+    userId     String
+    medicineId String
+    rating     Int
+    comment    String?
+    createdAt  DateTime @default(now())
+    updatedAt  DateTime @updatedAt
+
+    user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    medicine Medicine @relation(fields: [medicineId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, medicineId])
+    @@index([medicineId])
+    @@map("review")
 }
