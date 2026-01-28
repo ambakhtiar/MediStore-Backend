@@ -10,7 +10,7 @@ export const auth = betterAuth({
         additionalFields: {
             role: {
                 type: "string",
-                defaultValue: "customer",
+                defaultValue: "CUSTOMER",
                 required: false
             },
             phone: {
@@ -19,7 +19,7 @@ export const auth = betterAuth({
             },
             status: {
                 type: "string",
-                defaultValue: "ACTIVE",
+                defaultValue: "UNBAN",
                 required: false
             }
         }

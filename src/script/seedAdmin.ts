@@ -1,5 +1,5 @@
+import { UserRole } from "../generated/prisma/enums";
 import { prisma } from "../lib/prisma";
-import { UserRole } from "../types";
 
 const seedAdmin = async () => {
     try {
@@ -44,4 +44,4 @@ const seedAdmin = async () => {
     }
 };
 
-// seedAdmin();
+seedAdmin();

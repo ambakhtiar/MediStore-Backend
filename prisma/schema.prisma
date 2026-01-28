@@ -20,7 +20,7 @@ enum UserRole {
 
 enum UserStatus {
     UNBAN
-    BANNED
+    BAN
 }
 
 enum OrderStatus {
