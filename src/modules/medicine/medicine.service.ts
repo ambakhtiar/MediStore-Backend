@@ -1,4 +1,5 @@
 import { Medicine } from "../../generated/prisma/client";
+import { MedicineWhereInput } from "../../generated/prisma/models";
 import { prisma } from "../../lib/prisma";
 
 export class ServiceError extends Error {
@@ -11,9 +12,96 @@ export class ServiceError extends Error {
 
 
 // Public services
-const getAllMedicines = async () => {
-    return prisma.medicine.findMany({ where: { isActive: true } });
+type SearchFilters = {
+    search?: string | undefined;
+    category?: string | undefined;
+    manufacturer?: string | undefined;
+    sellerId?: string | undefined;
+    minPrice?: number | undefined;
+    maxPrice?: number | undefined;
+    inStock?: boolean | undefined;
+    page: number,
+    limit: number,
+    skip: number,
+    sortBy: string,
+    sortOrder: string,
 };
+
+
+const getAllMedicines = async (filters: SearchFilters) => {
+    const { search, category, manufacturer, sellerId, minPrice, maxPrice, inStock, page = 1, limit = 20, skip, sortBy = "createdAt", sortOrder = "desc",
+    } = filters;
+
+    // build conditions
+    const andConditions: MedicineWhereInput[] = [{ isActive: true }];
+
+    if (search) {
+        andConditions.push({
+            OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { genericName: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+            ],
+        });
+    }
+
+    if (manufacturer) {
+        andConditions.push({ manufacturer: { contains: manufacturer, mode: "insensitive" } });
+    }
+
+    if (sellerId) {
+        andConditions.push({ sellerId });
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+        const price: any = {};
+        if (minPrice !== undefined) price.gte = minPrice;
+        if (maxPrice !== undefined) price.lte = maxPrice;
+        andConditions.push({ price });
+    }
+
+    if (typeof inStock === "boolean") {
+        andConditions.push(inStock ? { stock: { gt: 0 } } : { stock: { lte: 0 } });
+    }
+
+    if (category) {
+        andConditions.push({
+            OR: [
+                { categoryId: category },
+                { category: { name: { equals: category, mode: "insensitive" } } },
+            ],
+        });
+    }
+
+    try {
+        const where = andConditions.length ? { AND: andConditions } : {};
+
+        const [items, total] = await Promise.all([
+            prisma.medicine.findMany({
+                where,
+                take: limit,
+                skip,
+                orderBy: { [sortBy]: sortOrder },
+            }),
+            prisma.medicine.count({ where }),
+        ]);
+
+        return {
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+            data: items,
+        };
+    } catch (err) {
+        console.error("searchMedicines error:", err);
+        throw new ServiceError("Database error while searching medicines", 500);
+    }
+
+};
+
 
 const getMedicineById = async (id: string) => {
     return prisma.medicine.findUnique({ where: { id } });

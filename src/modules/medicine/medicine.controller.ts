@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { medicineService, ServiceError } from "./medicine.service";
+import paginationSortingHelpers from "../../helpers/paginationSortingHelpers";
 
 // helper for consistent response
 const send = (res: Response, code: number, message: string, data?: any) =>
@@ -12,14 +13,63 @@ const sendError = (res: Response, err: any, fallback: string) => {
 };
 
 // Public controllers
-const getAllMedicines = async (_req: Request, res: Response) => {
+const getAllMedicines = async (req: Request, res: Response) => {
     try {
-        const medicines = await medicineService.getAllMedicines();
-        return send(res, 200, "Medicines fetched successfully", medicines);
+        const { search, category, manufacturer } = req.query;
+        const searchString = typeof search === "string" ? search.trim() : undefined;
+        const categoryString = typeof category === "string" ? category.trim() : undefined;
+        const manufacturerString = typeof manufacturer === "string" ? manufacturer.trim() : undefined;
+        const sellerId = typeof req.query.sellerId === "string" ? req.query.sellerId : undefined;
+
+        const minPrice = req.query.minPrice ? Number(req.query.minPrice) : undefined;
+        const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
+
+        const inStock =
+            typeof req.query.inStock === "string"
+                ? req.query.inStock === "true"
+                    ? true
+                    : req.query.inStock === "false"
+                        ? false
+                        : undefined
+                : undefined;
+
+        const { page, limit, skip, sortBy, sortOrder } = paginationSortingHelpers(req.query);
+
+        if (minPrice !== undefined && Number.isNaN(minPrice)) {
+            return send(res, 400, "Invalid minPrice");
+        }
+        if (maxPrice !== undefined && Number.isNaN(maxPrice)) {
+            return send(res, 400, "Invalid maxPrice");
+        }
+        if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
+            return send(res, 400, "minPrice cannot be greater than maxPrice");
+        }
+
+        const filters = {
+            search: searchString,
+            category: categoryString,
+            manufacturer: manufacturerString,
+            sellerId,
+            minPrice,
+            maxPrice,
+            inStock,
+            page,
+            limit,
+            skip,
+            sortBy,
+            sortOrder,
+        };
+
+
+        const data = await medicineService.getAllMedicines(filters);
+
+        return send(res, 200, "Medicines fetched successfully", data);
     } catch (err) {
+        console.error("getAllMedicines controller error:", err);
         return sendError(res, err, "Failed to fetch medicines");
     }
 };
+
 
 const getMedicineById = async (req: Request, res: Response) => {
     try {
