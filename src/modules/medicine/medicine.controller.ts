@@ -1,6 +1,7 @@
-import { Request, Response } from "express";
-import { medicineService, ServiceError } from "./medicine.service";
+import { NextFunction, Request, Response } from "express";
+import { medicineService } from "./medicine.service";
 import paginationSortingHelpers from "../../helpers/paginationSortingHelpers";
+import { ServiceError } from "../../lib/error";
 
 // helper for consistent response
 const send = (res: Response, code: number, message: string, data?: any) =>
@@ -12,8 +13,9 @@ const sendError = (res: Response, err: any, fallback: string) => {
     return res.status(status).json({ message });
 };
 
+
 // Public controllers
-const getAllMedicines = async (req: Request, res: Response) => {
+const getAllMedicines = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { search, category, manufacturer } = req.query;
         const searchString = typeof search === "string" ? search.trim() : undefined;
@@ -65,61 +67,67 @@ const getAllMedicines = async (req: Request, res: Response) => {
 
         return send(res, 200, "Medicines fetched successfully", data);
     } catch (err) {
-        console.error("getAllMedicines controller error:", err);
-        return sendError(res, err, "Failed to fetch medicines");
+        // console.error("getAllMedicines controller error:", err);
+        // return sendError(res, err, "Failed to fetch medicines");
+        next(err);
     }
 };
 
 
-const getMedicineById = async (req: Request, res: Response) => {
+const getMedicineById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const medicine = await medicineService.getMedicineById(req.params.id as string);
         if (!medicine) return send(res, 404, "Medicine not found");
         return send(res, 200, "Medicine fetched successfully", medicine);
     } catch (err) {
-        return sendError(res, err, "Failed to fetch medicine details");
+        next(err);
+        // return sendError(res, err, "Failed to fetch medicine details");
     }
 };
 
 // Seller controllers
-const addMedicine = async (req: Request, res: Response) => {
+const addMedicine = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.user?.id) return send(res, 401, "Unauthorized");
         const medicine = await medicineService.addMedicine(req.body, req.user.id);
         return send(res, 201, "Medicine created successfully", medicine);
     } catch (err) {
-        return sendError(res, err, "Failed to add medicine");
+        // return sendError(res, err, "Failed to add medicine");
+        next(err);
     }
 };
 
-const updateMedicine = async (req: Request, res: Response) => {
+const updateMedicine = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.user?.id) return send(res, 401, "Unauthorized");
         const medicine = await medicineService.updateMedicine(req.params.id as string, req.body, req.user.id);
         return send(res, 200, "Medicine updated successfully", medicine);
     } catch (err) {
-        return sendError(res, err, "Failed to update medicine");
+        // return sendError(res, err, "Failed to update medicine");
+        next(err);
     }
 };
 
-const deleteMedicine = async (req: Request, res: Response) => {
+const deleteMedicine = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.user?.id) return send(res, 401, "Unauthorized");
         await medicineService.deleteMedicine(req.params.id as string, req.user.id);
         return send(res, 200, "Medicine deleted successfully");
     } catch (err) {
-        return sendError(res, err, "Failed to delete medicine");
+        // return sendError(res, err, "Failed to delete medicine");
+        next(err);
     }
 };
 
-const updateStock = async (req: Request, res: Response) => {
+const updateStock = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.user?.id) return send(res, 401, "Unauthorized");
         const { stock } = req.body;
         const medicine = await medicineService.updateStock(req.params.id as string, stock, req.user.id);
         return send(res, 200, "Stock updated successfully", medicine);
     } catch (err) {
-        return sendError(res, err, "Failed to update stock");
+        // return sendError(res, err, "Failed to update stock");
+        next(err);
     }
 };
 

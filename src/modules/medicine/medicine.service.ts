@@ -1,14 +1,7 @@
 import { Medicine } from "../../generated/prisma/client";
 import { MedicineWhereInput } from "../../generated/prisma/models";
+import { ServiceError } from "../../lib/error";
 import { prisma } from "../../lib/prisma";
-
-export class ServiceError extends Error {
-    statusCode: number;
-    constructor(message: string, statusCode = 400) {
-        super(message);
-        this.statusCode = statusCode;
-    }
-}
 
 
 // Public services
