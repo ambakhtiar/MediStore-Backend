@@ -4,11 +4,13 @@ import auth from "../middleware/auth";
 import { UserRole } from "../types";
 import { userRouter } from "../modules/user/user.routes";
 import { categoryRouter } from "../modules/category/category.routes";
+import { profileRouter } from "../modules/profile/profile.routes";
 
 const router = express.Router();
 
 router.use('/medicines', medicineRouter);
 router.use('/categories', categoryRouter);
+router.use('/profile', profileRouter);
 router.use('/admin/users', auth(UserRole.ADMIN), userRouter);
 
 
