@@ -91,6 +91,8 @@ const changePassword = async (
         return;
     } catch (err: any) {
         // rethrow ServiceError
+        // TODO : CRETAE GlOBAL ERROR HANDLER 
+        // TODO: REMOVE BELOW CODE 
         if (err instanceof ServiceError) throw err;
 
         const message = String(err?.message ?? "");

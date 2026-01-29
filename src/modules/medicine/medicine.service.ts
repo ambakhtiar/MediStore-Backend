@@ -82,6 +82,10 @@ const getAllMedicines = async (filters: SearchFilters) => {
                 take: limit,
                 skip,
                 orderBy: { [sortBy]: sortOrder },
+                include: {
+                    seller: true,
+                    category: true
+                }
             }),
             prisma.medicine.count({ where }),
         ]);

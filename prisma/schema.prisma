@@ -25,10 +25,11 @@ enum UserStatus {
 
 enum OrderStatus {
     PLACED
+    CANCELLED
+    CONFIRMS
     PROCESSING
     SHIPPED
     DELIVERED
-    CANCELLED
 }
 
 // MODELS
@@ -180,8 +181,8 @@ model Order {
     userId          String
     total           Float
     status          OrderStatus @default(PLACED)
-    shippingName    String?
-    shippingPhone   String?
+    shippingName    String
+    shippingPhone   String
     shippingAddress String
     createdAt       DateTime    @default(now())
     updatedAt       DateTime    @updatedAt
