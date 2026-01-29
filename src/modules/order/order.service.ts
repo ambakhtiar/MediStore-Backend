@@ -361,11 +361,31 @@ const updateOrderStatusByActor = async (user: User, orderId: string, newStatus: 
     }
 };
 
+const getOrderStatus = async (orderId: string) => {
+    try {
+        const result = await prisma.order.findUnique({
+            where: {
+                id: orderId
+            },
+            select: {
+                status: true
+            }
+        })
+
+        return result;
+    } catch (err: any) {
+        if (err instanceof ServiceError) throw err;
+        console.error("getOrderStatus error:", err);
+        throw new ServiceError("Failed to get order status", 500);
+    }
+}
+
 
 export const orderService = {
     createOrder,
     listOrders,
     getOrder,
     cancelOrderByCustomer,
-    updateOrderStatusByActor
+    updateOrderStatusByActor,
+    getOrderStatus
 };

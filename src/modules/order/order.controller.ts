@@ -90,6 +90,19 @@ const updateOrderStatusByActor = async (req: Request, res: Response) => {
     }
 };
 
+const getOrderStatus = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        if (!user?.id) return send(res, 401, "Unauthorized");
+
+        const orderId = req.params.id;
+        const status = await orderService.getOrderStatus(orderId as string);
+        return send(res, 200, "Order fetched", status);
+    } catch (err) {
+        return sendError(res, err, "Failed to fetch order");
+    }
+};
+
 
 export const orderController = {
     createOrder,
@@ -97,4 +110,5 @@ export const orderController = {
     getOrder,
     cancelOrderByCustomer,
     updateOrderStatusByActor,
+    getOrderStatus
 };

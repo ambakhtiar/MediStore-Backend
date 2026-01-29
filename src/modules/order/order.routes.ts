@@ -9,6 +9,7 @@ const router = Router();
 router.post("/", auth(UserRole.CUSTOMER), orderController.createOrder);
 router.get("/", auth(), orderController.listOrders);
 router.get("/:id", auth(), orderController.getOrder);
+router.get("/:id/track", auth(), orderController.getOrderStatus);
 router.patch("/:id/cancel", auth(), orderController.cancelOrderByCustomer);
 
 // Seller/Admin: update order status
