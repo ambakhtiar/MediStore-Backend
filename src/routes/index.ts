@@ -3,10 +3,13 @@ import { medicineRouter } from "../modules/medicine/medicine.routes";
 import auth from "../middleware/auth";
 import { UserRole } from "../types";
 import { userRouter } from "../modules/user/user.routes";
+import { categoryRouter } from "../modules/category/category.routes";
 
 const router = express.Router();
 
 router.use('/medicines', medicineRouter);
-router.use('/admin/user', auth(UserRole.ADMIN), userRouter);
+router.use('/categories', categoryRouter);
+router.use('/admin/users', auth(UserRole.ADMIN), userRouter);
+
 
 export default router;
