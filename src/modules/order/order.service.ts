@@ -318,7 +318,7 @@ const updateOrderStatusByActor = async (user: User, orderId: string, newStatus: 
 
             // Authorization:
             if (user.role === "SELLER") {
-                const owns = order.items.some((it) => it.medicine.sellerId === user.id);
+                const owns = order.items.map((it) => it.medicine.sellerId === user.id);
                 if (!owns) throw new ServiceError("Unauthorized: you don't own items in this order", 403);
             } else if (user.role !== "ADMIN") {
                 throw new ServiceError("Unauthorized", 403);

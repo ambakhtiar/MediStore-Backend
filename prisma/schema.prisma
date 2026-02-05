@@ -11,7 +11,6 @@ datasource db {
 }
 
 // ENUMS
-
 enum UserRole {
     CUSTOMER
     SELLER
@@ -197,13 +196,14 @@ model Order {
 }
 
 model OrderItem {
-    id         String   @id @default(uuid())
-    orderId    String
-    medicineId String
-    quantity   Int
-    unitPrice  Float
-    createdAt  DateTime @default(now())
-    updatedAt  DateTime @updatedAt
+    id              String      @id @default(uuid())
+    orderId         String
+    medicineId      String
+    quantity        Int
+    unitPrice       Float
+    orderItemStatus OrderStatus @default(PLACED)
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @updatedAt
 
     order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
     medicine Medicine @relation(fields: [medicineId], references: [id])
