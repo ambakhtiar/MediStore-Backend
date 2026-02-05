@@ -130,6 +130,7 @@ model Medicine {
     stock        Int
     manufacturer String?
     imageUrl     String?
+    isFeatured   Boolean  @default(false)
     isActive     Boolean  @default(true)
     createdAt    DateTime @default(now())
     updatedAt    DateTime @updatedAt

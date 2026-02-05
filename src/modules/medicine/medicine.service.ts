@@ -6,13 +6,14 @@ import { prisma } from "../../lib/prisma";
 
 // Public services
 type SearchFilters = {
-    search?: string | undefined;
-    category?: string | undefined;
-    manufacturer?: string | undefined;
-    sellerId?: string | undefined;
-    minPrice?: number | undefined;
-    maxPrice?: number | undefined;
-    inStock?: boolean | undefined;
+    search: string | undefined;
+    category: string | undefined;
+    manufacturer: string | undefined;
+    sellerId: string | undefined;
+    minPrice: number | undefined;
+    maxPrice: number | undefined;
+    inStock: boolean | undefined;
+    isFeatured: boolean | undefined,
     page: number,
     limit: number,
     skip: number,
@@ -22,7 +23,7 @@ type SearchFilters = {
 
 
 const getAllMedicines = async (filters: SearchFilters) => {
-    const { search, category, manufacturer, sellerId, minPrice, maxPrice, inStock, page = 1, limit = 20, skip, sortBy = "createdAt", sortOrder = "desc",
+    const { search, category, manufacturer, sellerId, isFeatured, minPrice, maxPrice, inStock, page = 1, limit = 20, skip, sortBy = "createdAt", sortOrder = "desc",
     } = filters;
 
     // build conditions
@@ -56,6 +57,13 @@ const getAllMedicines = async (filters: SearchFilters) => {
     if (typeof inStock === "boolean") {
         andConditions.push(inStock ? { stock: { gt: 0 } } : { stock: { lte: 0 } });
     }
+
+
+    if (typeof isFeatured === "boolean") {
+        andConditions.push({ isFeatured });
+    }
+    console.log(andConditions);
+
 
     if (category) {
         andConditions.push({
@@ -101,7 +109,21 @@ const getAllMedicines = async (filters: SearchFilters) => {
 
 
 const getMedicineById = async (id: string) => {
-    return prisma.medicine.findUnique({ where: { id } });
+    try {
+        const medicine = await prisma.medicine.findUnique({
+            where: { id },
+            include: {
+                category: true,
+                seller: true,
+            },
+        });
+
+        return medicine;
+    } catch (error) {
+        console.error("getMedicineById error:", error);
+        throw error;
+    }
+
 };
 
 

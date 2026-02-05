@@ -35,6 +35,14 @@ const getAllMedicines = async (req: Request, res: Response, next: NextFunction) 
                         : undefined
                 : undefined;
 
+        const isFeatured = typeof req.query.isFeatured === "string"
+            ? req.query.isFeatured === "true"
+                ? true
+                : req.query.isFeatured === "false"
+                    ? false
+                    : undefined
+            : undefined;
+
         const { page, limit, skip, sortBy, sortOrder } = paginationSortingHelpers(req.query);
 
         if (minPrice !== undefined && Number.isNaN(minPrice)) {
@@ -55,6 +63,7 @@ const getAllMedicines = async (req: Request, res: Response, next: NextFunction) 
             minPrice,
             maxPrice,
             inStock,
+            isFeatured,
             page,
             limit,
             skip,
