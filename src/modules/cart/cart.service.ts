@@ -154,6 +154,7 @@ const getCart = async (userId: string) => {
             where: { userId },
             include: {
                 items: {
+                    orderBy: { createdAt: "desc" },
                     include: {
                         medicine: {
                             select: {
@@ -199,8 +200,8 @@ const getCart = async (userId: string) => {
         }));
 
         const subtotal = items.reduce((total, it) => total + it.unitPrice * it.quantity, 0);
-
-        return { items, subtotal };
+        const cartCount = cart.items.length;
+        return { items, subtotal, cartCount };
     } catch (err: any) {
         console.error("getCart error:", err);
         throw new ServiceError("Failed to fetch cart", 500);
@@ -258,6 +259,7 @@ const updateItem = async (userId: string, cartItemId: string, quantity?: number)
                         },
                     },
                 },
+
             });
 
             return formatCartItem(updated);

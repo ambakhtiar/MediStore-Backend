@@ -53,6 +53,19 @@ const getOrder = async (req: Request, res: Response) => {
     }
 };
 
+const getOrderStatus = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        if (!user?.id) return send(res, 401, "Unauthorized");
+
+        const orderId = req.params.id;
+        const status = await orderService.getOrderStatus(orderId as string);
+        return send(res, 200, "Order fetched", status);
+    } catch (err) {
+        return sendError(res, err, "Failed to fetch order");
+    }
+};
+
 /**
  * POST /api/orders/:id/cancel
  * Customer cancels their own order if allowed (before confirm/processing).
@@ -74,7 +87,27 @@ const cancelOrderByCustomer = async (req: Request, res: Response) => {
  * PATCH /api/orders/:id/status
  * Seller or Admin updates order status (body: { status })
  */
-const updateOrderStatusByActor = async (req: Request, res: Response) => {
+// controllers/order.controller.ts
+
+// Seller updates only an order item status
+export const updateOrderItemStatusBySeller = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        if (!user?.id) return send(res, 401, "Unauthorized");
+
+        const orderItemId = req.params.id;
+        const { status } = req.body ?? {};
+        if (!status) return send(res, 400, "status is required");
+
+        const updated = await orderService.updateOrderItemStatusBySeller(user, orderItemId as string, status);
+        return send(res, 200, "Order item status updated", updated);
+    } catch (err) {
+        return sendError(res, err, "Failed to update order item status");
+    }
+};
+
+// Admin updates whole order status
+export const updateOrderStatusByAdmin = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
         if (!user?.id) return send(res, 401, "Unauthorized");
@@ -83,23 +116,10 @@ const updateOrderStatusByActor = async (req: Request, res: Response) => {
         const { status } = req.body ?? {};
         if (!status) return send(res, 400, "status is required");
 
-        const updated = await orderService.updateOrderStatusByActor(user, orderId as string, status);
+        const updated = await orderService.updateOrderStatusByAdmin(user, orderId as string, status);
         return send(res, 200, "Order status updated", updated);
     } catch (err) {
         return sendError(res, err, "Failed to update order status");
-    }
-};
-
-const getOrderStatus = async (req: Request, res: Response) => {
-    try {
-        const user = (req as any).user;
-        if (!user?.id) return send(res, 401, "Unauthorized");
-
-        const orderId = req.params.id;
-        const status = await orderService.getOrderStatus(orderId as string);
-        return send(res, 200, "Order fetched", status);
-    } catch (err) {
-        return sendError(res, err, "Failed to fetch order");
     }
 };
 
@@ -108,7 +128,8 @@ export const orderController = {
     createOrder,
     listOrders,
     getOrder,
+    getOrderStatus,
     cancelOrderByCustomer,
-    updateOrderStatusByActor,
-    getOrderStatus
+    updateOrderStatusByAdmin,
+    updateOrderItemStatusBySeller,
 };

@@ -62,7 +62,7 @@ const getAllMedicines = async (filters: SearchFilters) => {
     if (typeof isFeatured === "boolean") {
         andConditions.push({ isFeatured });
     }
-    console.log(andConditions);
+    // console.log(andConditions);
 
 
     if (category) {

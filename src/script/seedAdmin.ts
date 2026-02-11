@@ -15,7 +15,7 @@ const seedAdmin = async () => {
         });
 
         if (existingUser) {
-            console.log("Admin already exists");
+            // console.log("Admin already exists");
             return;
         }
 
@@ -27,7 +27,7 @@ const seedAdmin = async () => {
             },
             body: JSON.stringify(adminData),
         });
-        console.log(newAdmin);
+        // console.log(newAdmin);
 
         if (newAdmin.ok) {
             await prisma.user.update({

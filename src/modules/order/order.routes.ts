@@ -13,6 +13,8 @@ router.get("/:id/track", auth(), orderController.getOrderStatus);
 router.patch("/:id/cancel", auth(), orderController.cancelOrderByCustomer);
 
 // Seller/Admin: update order status
-router.patch("/seller/:id/status", auth(UserRole.SELLER, UserRole.ADMIN), orderController.updateOrderStatusByActor);
+// router.ts (বা যেখানে রাউট ডিফাইন করেন)
+router.patch("/seller/order-item/:id/status", auth(UserRole.SELLER), orderController.updateOrderItemStatusBySeller);
+router.patch("/admin/order/:id/status", auth(UserRole.ADMIN), orderController.updateOrderStatusByAdmin);
 
 export const orderRouter = router;

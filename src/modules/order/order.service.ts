@@ -290,6 +290,25 @@ const cancelOrderByCustomer = async (user: User, orderId: string) => {
     }
 };
 
+const getOrderStatus = async (orderId: string) => {
+    try {
+        const result = await prisma.order.findUnique({
+            where: {
+                id: orderId
+            },
+            select: {
+                status: true
+            }
+        })
+
+        return result;
+    } catch (err: any) {
+        if (err instanceof ServiceError) throw err;
+        console.error("getOrderStatus error:", err);
+        throw new ServiceError("Failed to get order status", 500);
+    }
+}
+
 /**
  * Seller or Admin updates order status.
  * - Seller must own at least one item in the order.
@@ -298,7 +317,7 @@ const cancelOrderByCustomer = async (user: User, orderId: string) => {
  * - If status becomes CANCELLED, prevents cancellation after SHIPPED/DELIVERED.
  * - Runs in a transaction.
 **/
-const updateOrderStatusByActor = async (user: User, orderId: string, newStatus: string) => {
+const updateOrderStatusByAdmin = async (user: User, orderId: string, newStatus: string) => {
     const upper = normalizeStatus(newStatus);
     const VALID_STATUSES = Object.keys(VALID_TRANSITIONS);
 
@@ -317,10 +336,7 @@ const updateOrderStatusByActor = async (user: User, orderId: string, newStatus: 
             if (!order) throw new ServiceError("Order not found", 404);
 
             // Authorization:
-            if (user.role === "SELLER") {
-                const owns = order.items.map((it) => it.medicine.sellerId === user.id);
-                if (!owns) throw new ServiceError("Unauthorized: you don't own items in this order", 403);
-            } else if (user.role !== "ADMIN") {
+            if (user.role !== "ADMIN") {
                 throw new ServiceError("Unauthorized", 403);
             }
 
@@ -361,31 +377,66 @@ const updateOrderStatusByActor = async (user: User, orderId: string, newStatus: 
     }
 };
 
-const getOrderStatus = async (orderId: string) => {
-    try {
-        const result = await prisma.order.findUnique({
-            where: {
-                id: orderId
-            },
-            select: {
-                status: true
-            }
-        })
+// VALID_TRANSITIONS: আপনার বিদ্যমান স্টেট মেশিন ব্যবহার করুন
+// Example:
+// const VALID_TRANSITIONS = { PLACED: ["PROCESSING","CANCELLED"], PROCESSING: ["SHIPPED","CANCELLED"], SHIPPED: ["DELIVERED"], ... }
 
-        return result;
+export const updateOrderItemStatusBySeller = async (user: User, orderItemId: string, newStatus: string) => {
+    const upper = normalizeStatus(newStatus);
+    if (!Object.keys(VALID_TRANSITIONS).includes(upper)) {
+        throw new ServiceError("Invalid status", 400);
+    }
+
+    try {
+        return await prisma.$transaction(async (tx) => {
+            // fetch order item with medicine and order
+            const item = await tx.orderItem.findUnique({
+                where: { id: orderItemId },
+                include: { medicine: { select: { sellerId: true, id: true, name: true } }, order: { select: { id: true, status: true } } },
+            });
+            if (!item) throw new ServiceError("Order item not found", 404);
+
+            // authorization: seller must own the medicine
+            if (user.role === "SELLER" && item.medicine.sellerId !== user.id) {
+                throw new ServiceError("Unauthorized: you don't own this item", 403);
+            }
+
+            const current = item.orderItemStatus;
+            if (current === upper) {
+                // return fresh item
+                return await tx.orderItem.findUnique({ where: { id: orderItemId }, include: { medicine: true, order: true } });
+            }
+
+            // validate transition for order item status
+            const allowed = VALID_TRANSITIONS[current] ?? [];
+            if (!allowed.includes(upper)) {
+                throw new ServiceError(`Invalid status transition from ${current} to ${upper}`, 400);
+            }
+
+            // update only the order item status
+            const updatedItem = await tx.orderItem.update({
+                where: { id: orderItemId },
+                data: { orderItemStatus: upper as any },
+                include: { medicine: true, order: true },
+            });
+
+            return updatedItem;
+        });
     } catch (err: any) {
         if (err instanceof ServiceError) throw err;
-        console.error("getOrderStatus error:", err);
-        throw new ServiceError("Failed to get order status", 500);
+        console.error("updateOrderItemStatusBySeller error:", err);
+        throw new ServiceError("Failed to update order item status", 500);
     }
-}
+};
 
 
 export const orderService = {
     createOrder,
     listOrders,
     getOrder,
+    getOrderStatus,
     cancelOrderByCustomer,
-    updateOrderStatusByActor,
-    getOrderStatus
+    updateOrderStatusByAdmin,
+    updateOrderItemStatusBySeller,
+
 };
