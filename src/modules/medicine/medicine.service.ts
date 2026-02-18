@@ -92,6 +92,7 @@ const getAllMedicines = async (filters: SearchFilters) => {
         ]);
 
         return {
+            ok: true,
             pagination: {
                 total,
                 page,
@@ -106,6 +107,101 @@ const getAllMedicines = async (filters: SearchFilters) => {
     }
 
 };
+
+
+const getMedicinesBySeller = async (sellerId: string | undefined, filters: Partial<SearchFilters> = {}) => {
+    try {
+        if (!sellerId) {
+            return { ok: false, error: { message: "sellerId is required" } };
+        }
+        console.log(sellerId);
+        const {
+            page = 1,
+            limit = 20,
+            skip = (page - 1) * limit,
+            sortBy = "createdAt",
+            sortOrder = "desc",
+            search,
+            category,
+            manufacturer,
+            minPrice,
+            maxPrice,
+            inStock,
+            isFeatured,
+        } = filters as any;
+
+        // Build where clause scoped to seller
+        const andConditions: MedicineWhereInput[] = [{ sellerId }];
+
+        if (search) {
+            andConditions.push({
+                OR: [
+                    { name: { contains: search, mode: "insensitive" } },
+                    { genericName: { contains: search, mode: "insensitive" } },
+                    { description: { contains: search, mode: "insensitive" } },
+                ],
+            });
+        }
+
+        if (manufacturer) {
+            andConditions.push({ manufacturer: { contains: manufacturer, mode: "insensitive" } });
+        }
+
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            const price: any = {};
+            if (minPrice !== undefined) price.gte = minPrice;
+            if (maxPrice !== undefined) price.lte = maxPrice;
+            andConditions.push({ price });
+        }
+
+        if (typeof inStock === "boolean") {
+            andConditions.push(inStock ? { stock: { gt: 0 } } : { stock: { lte: 0 } });
+        }
+
+        if (typeof isFeatured === "boolean") {
+            andConditions.push({ isFeatured });
+        }
+
+        if (category) {
+            andConditions.push({
+                OR: [
+                    { categoryId: category },
+                    { category: { name: { equals: category, mode: "insensitive" } } },
+                ],
+            });
+        }
+
+        const where = andConditions.length ? { AND: andConditions } : {};
+
+        const [items, total] = await Promise.all([
+            prisma.medicine.findMany({
+                where,
+                take: limit,
+                skip,
+                orderBy: { [sortBy]: sortOrder },
+                include: { category: true },
+            }),
+            prisma.medicine.count({ where }),
+        ]);
+
+        return {
+            ok: true,
+            data: {
+                pagination: {
+                    total,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(total / limit),
+                },
+                data: items,
+            },
+        };
+    } catch (err) {
+        console.error("getMedicinesBySeller error:", err);
+        return { ok: false, error: { message: "Failed to fetch seller medicines" } };
+    }
+};
+
 
 
 const getMedicineById = async (id: string) => {
@@ -211,6 +307,7 @@ const updateStock = async (id: string, stock: number, sellerId: string) => {
 
 export const medicineService = {
     getAllMedicines,
+    getMedicinesBySeller,
     getMedicineById,
     addMedicine,
     updateMedicine,

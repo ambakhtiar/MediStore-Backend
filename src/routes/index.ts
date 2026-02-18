@@ -14,7 +14,7 @@ router.use('/medicines', medicineRouter);
 router.use('/categories', categoryRouter);
 router.use('/profile', profileRouter);
 router.use('/cart', cartRouter);
-router.use('/order', orderRouter);
+router.use('/orders', orderRouter);
 router.use('/admin/users', auth(UserRole.ADMIN), userRouter);
 
 

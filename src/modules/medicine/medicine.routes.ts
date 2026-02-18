@@ -8,10 +8,11 @@ const router = Router();
 
 // Public routes
 router.get("/", medicineController.getAllMedicines);
+router.get("/seller", auth(UserRole.SELLER), medicineController.getMedicinesBySeller);
 router.get("/:id", medicineController.getMedicineById);
 
 
-// Seller-only routes
+// Seller-only routes 
 router.post("/", auth(UserRole.SELLER), medicineController.addMedicine);
 router.put("/:id", auth(UserRole.SELLER), medicineController.updateMedicine);
 router.delete("/:id", auth(UserRole.SELLER), medicineController.deleteMedicine);
