@@ -106,6 +106,16 @@ const updateCategory = async (id: string, data: UpdateDataType): Promise<Categor
         const updateData: any = {};
         if (data.name !== undefined) updateData.name = data.name.trim();
         if (data.description !== undefined) updateData.description = data.description ?? null;
+        if (data.isPrescriptionRequired !== undefined && data.isPrescriptionRequired !== null) {
+            const raw = data.isPrescriptionRequired;
+            if (typeof raw === "boolean") {
+                updateData.isPrescriptionRequired = raw;
+            } else if (typeof raw === "string") {
+                updateData.isPrescriptionRequired = raw === "true";
+            } else {
+                updateData.isPrescriptionRequired = Boolean(raw);
+            }
+        }
 
         if (data.slug !== undefined) {
             const baseSlug = data.slug && data.slug.trim() ? slugify(data.slug) : slugify(updateData.name ?? existing.name);
@@ -117,7 +127,7 @@ const updateCategory = async (id: string, data: UpdateDataType): Promise<Categor
                 updateData.slug = existing.slug;
             }
         }
-
+        console.log("aaaa", data, "bbb\n", updateData);
         return await prisma.category.update({
             where: { id },
             data: updateData,

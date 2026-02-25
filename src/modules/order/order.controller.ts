@@ -123,6 +123,39 @@ export const updateOrderStatusByAdmin = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * GET /api/orders/:id/status-history
+ * Get order status history for tracking
+ */
+const getOrderStatusHistory = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        if (!user?.id) return send(res, 401, "Unauthorized");
+
+        const orderId = req.params.id;
+        const history = await orderService.getOrderStatusHistory(orderId as string);
+        return send(res, 200, "Status history fetched", history);
+    } catch (err) {
+        return sendError(res, err, "Failed to fetch status history");
+    }
+};
+
+/**
+ * GET /api/orders/delivered-medicines
+ * Get delivered medicines that need review
+ */
+const getDeliveredMedicinesForReview = async (req: Request, res: Response) => {
+    try {
+        const user = (req as any).user;
+        if (!user?.id) return send(res, 401, "Unauthorized");
+
+        const medicines = await orderService.getDeliveredMedicinesForReview(user.id);
+        return send(res, 200, "Delivered medicines fetched", medicines);
+    } catch (err) {
+        return sendError(res, err, "Failed to fetch delivered medicines");
+    }
+};
+
 
 export const orderController = {
     createOrder,
@@ -132,4 +165,6 @@ export const orderController = {
     cancelOrderByCustomer,
     updateOrderStatusByAdmin,
     updateOrderItemStatusBySeller,
+    getOrderStatusHistory,
+    getDeliveredMedicinesForReview
 };

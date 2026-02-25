@@ -202,7 +202,17 @@ const getReviewsByUser = async (userId: string, opts: PaginationType) => {
             skip,
             take: limit,
             orderBy: { [sortBy]: sortOrder },
-            include: { medicine: { select: { id: true, name: true, imageUrl: true } } },
+            // include: { medicine: { select: { id: true, name: true, imageUrl: true } } },
+            include: {
+                user: {
+                    select: {
+                        id: true, name: true, email: true, image: true,
+                    },
+                },
+                medicine: {
+                    select: { id: true, name: true, genericName: true, imageUrl: true, },
+                },
+            }
         });
         return { reviews };
     } catch (err: any) {

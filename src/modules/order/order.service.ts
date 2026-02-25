@@ -10,6 +10,24 @@ export class ServiceError extends Error {
     }
 }
 
+
+const createStatusHistory = async (
+    tx: any,
+    orderId: string,
+    status: string,
+    changedBy?: string,
+    notes?: string
+) => {
+    return await tx.orderStatusHistory.create({
+        data: {
+            orderId,
+            status: status as any,
+            changedBy,
+            notes,
+        },
+    });
+};
+
 type CreateOrderType = {
     shippingName?: string;
     shippingPhone?: string;
@@ -84,12 +102,16 @@ const createOrder = async (userId: string, data: CreateOrderType) => {
                 data: {
                     userId,
                     total,
+                    status: "PLACED",
                     shippingName: shippingName ?? null,
                     shippingPhone,
                     shippingAddress,
 
                 },
             });
+
+
+            await createStatusHistory(tx, order.id, "PLACED", userId, "Order created");
 
             // create order items and decrement stock
             const orderItemCreates = cart.items.map((it) =>
@@ -212,7 +234,14 @@ const getOrder = async (user: User, orderId: string) => {
     try {
         const order = await prisma.order.findUnique({
             where: { id: orderId },
-            include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true, email: true } } },
+            include:
+            {
+                items: {
+                    include:
+                        { medicine: true }
+                },
+                user: { select: { id: true, name: true, email: true } }
+            },
         });
         if (!order) throw new ServiceError("Order not found", 404);
 
@@ -363,8 +392,21 @@ const updateOrderStatusByAdmin = async (user: User, orderId: string, newStatus: 
             const updated = await tx.order.update({
                 where: { id: orderId },
                 data: { status: upper as any },
-                include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true, email: true } } },
+                include: {
+                    items: { include: { medicine: true } },
+                    user: { select: { id: true, name: true, email: true } },
+                    statusHistory: { orderBy: { changedAt: "asc" } },
+                },
             });
+
+            // Create status history entry
+            await createStatusHistory(
+                tx,
+                orderId,
+                upper,
+                user.id,
+                `Status changed from ${current} to ${upper} by admin`
+            );
 
             // console.info(`Order ${orderId} status changed ${current} -> ${upper} by ${user.id} (${user.role})`);
 
@@ -377,9 +419,6 @@ const updateOrderStatusByAdmin = async (user: User, orderId: string, newStatus: 
     }
 };
 
-// VALID_TRANSITIONS: আপনার বিদ্যমান স্টেট মেশিন ব্যবহার করুন
-// Example:
-// const VALID_TRANSITIONS = { PLACED: ["PROCESSING","CANCELLED"], PROCESSING: ["SHIPPED","CANCELLED"], SHIPPED: ["DELIVERED"], ... }
 
 export const updateOrderItemStatusBySeller = async (user: User, orderItemId: string, newStatus: string) => {
     const upper = normalizeStatus(newStatus);
@@ -429,6 +468,88 @@ export const updateOrderItemStatusBySeller = async (user: User, orderItemId: str
     }
 };
 
+/**
+ * Get order status history
+ * For Order tracking page 
+ */
+const getOrderStatusHistory = async (orderId: string) => {
+    try {
+        const history = await prisma.orderStatusHistory.findMany({
+            where: { orderId },
+            orderBy: { changedAt: "asc" },
+        });
+        return history;
+    } catch (err: any) {
+        console.error("getOrderStatusHistory error:", err);
+        throw new ServiceError("Failed to fetch order status history", 500);
+    }
+};
+
+/**
+ * Get delivered medicines for review
+ * Returns medicines that are delivered but not reviewed
+ */
+const getDeliveredMedicinesForReview = async (userId: string) => {
+    try {
+        // Get all delivered orders for this user
+        const deliveredOrders = await prisma.order.findMany({
+            where: {
+                userId,
+                status: "DELIVERED",
+            },
+            include: {
+                items: {
+                    include: {
+                        medicine: {
+                            select: {
+                                id: true,
+                                name: true,
+                                imageUrl: true,
+                                genericName: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        // Get all medicines from delivered orders
+        const deliveredMedicines = deliveredOrders.flatMap((order) =>
+            order.items.map((item) => ({
+                medicineId: item.medicine.id,
+                medicineName: item.medicine.name,
+                medicineImage: item.medicine.imageUrl,
+                genericName: item.medicine.genericName,
+                orderId: order.id,
+                orderDate: order.createdAt,
+            }))
+        );
+
+        // Get user's existing reviews
+        const existingReviews = await prisma.review.findMany({
+            where: { userId },
+            select: { medicineId: true },
+        });
+
+        const reviewedMedicineIds = new Set(existingReviews.map((r) => r.medicineId));
+
+        // Filter out medicines that are already reviewed
+        const pendingReviews = deliveredMedicines.filter(
+            (med) => !reviewedMedicineIds.has(med.medicineId)
+        );
+
+        // Remove duplicates (same medicine from multiple orders)
+        const uniquePendingReviews = Array.from(
+            new Map(pendingReviews.map((item) => [item.medicineId, item])).values()
+        );
+
+        return uniquePendingReviews;
+    } catch (err: any) {
+        console.error("getDeliveredMedicinesForReview error:", err);
+        throw new ServiceError("Failed to fetch delivered medicines", 500);
+    }
+};
+
 
 export const orderService = {
     createOrder,
@@ -438,5 +559,6 @@ export const orderService = {
     cancelOrderByCustomer,
     updateOrderStatusByAdmin,
     updateOrderItemStatusBySeller,
-
+    getOrderStatusHistory,
+    getDeliveredMedicinesForReview
 };

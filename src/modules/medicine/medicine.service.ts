@@ -114,7 +114,7 @@ const getMedicinesBySeller = async (sellerId: string | undefined, filters: Parti
         if (!sellerId) {
             return { ok: false, error: { message: "sellerId is required" } };
         }
-        console.log(sellerId);
+        // console.log(sellerId);
         const {
             page = 1,
             limit = 20,
