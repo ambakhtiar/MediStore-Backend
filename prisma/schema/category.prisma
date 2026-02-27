@@ -1,0 +1,13 @@
+model Category {
+    id                     String   @id @default(uuid())
+    name                   String   @unique
+    slug                   String?  @unique
+    description            String?
+    isPrescriptionRequired Boolean? @default(false)
+    createdAt              DateTime @default(now())
+    updatedAt              DateTime @updatedAt
+
+    medicines Medicine[]
+
+    @@map("category")
+}

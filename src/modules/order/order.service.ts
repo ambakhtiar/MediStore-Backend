@@ -1,6 +1,18 @@
 import { prisma } from "../../lib/prisma";
 import type { User } from "../../generated/prisma/client";
 
+// ** Allowed transitions map(source -> allowed next states) */s
+const VALID_TRANSITIONS: Record<string, string[]> = {
+    PLACED: ["PROCESSING", "CANCELLED", "CONFIRMS"],
+    CONFIRMS: ["PROCESSING", "CANCELLED"],
+    PROCESSING: ["SHIPPED", "CANCELLED"],
+    SHIPPED: ["DELIVERED"],
+    DELIVERED: [],
+    CANCELLED: [],
+};
+
+/** Helper: normalize status */
+const normalizeStatus = (s: string) => String(s ?? "").toUpperCase();
 export class ServiceError extends Error {
     statusCode: number;
     constructor(message: string, statusCode = 400) {
@@ -33,19 +45,6 @@ type CreateOrderType = {
     shippingPhone?: string;
     shippingAddress?: string;
 };
-
-// ** Allowed transitions map(source -> allowed next states) */s
-const VALID_TRANSITIONS: Record<string, string[]> = {
-    PLACED: ["PROCESSING", "CANCELLED", "CONFIRMS"],
-    CONFIRMS: ["PROCESSING", "CANCELLED"],
-    PROCESSING: ["SHIPPED", "CANCELLED"],
-    SHIPPED: ["DELIVERED"],
-    DELIVERED: [],
-    CANCELLED: [],
-};
-
-/** Helper: normalize status */
-const normalizeStatus = (s: string) => String(s ?? "").toUpperCase();
 
 /**
  * Create order from user's cart (Cash on Delivery).

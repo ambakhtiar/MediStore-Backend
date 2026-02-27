@@ -1,0 +1,62 @@
+enum OrderStatus {
+    PLACED
+    CANCELLED
+    CONFIRMS
+    PROCESSING
+    SHIPPED
+    DELIVERED
+}
+
+model Order {
+    id              String      @id @default(uuid())
+    userId          String
+    total           Float
+    status          OrderStatus @default(PLACED)
+    shippingName    String?
+    shippingPhone   String
+    shippingAddress String
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @updatedAt
+
+    user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+    items         OrderItem[]
+    statusHistory OrderStatusHistory[]
+
+    @@index([userId])
+    @@index([status])
+    @@map("order")
+}
+
+model OrderItem {
+    id              String      @id @default(uuid())
+    orderId         String
+    medicineId      String
+    quantity        Int
+    unitPrice       Float
+    orderItemStatus OrderStatus @default(PLACED)
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @updatedAt
+
+    order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    medicine Medicine @relation(fields: [medicineId], references: [id])
+
+    @@index([orderId])
+    @@index([medicineId])
+    @@map("order_item")
+}
+
+model OrderStatusHistory {
+    id        String      @id @default(uuid())
+    orderId   String
+    status    OrderStatus
+    changedAt DateTime    @default(now())
+    changedBy String? // কে change করেছে (admin/seller id)
+    notes     String? // optional notes
+    createdAt DateTime    @default(now())
+
+    order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+    @@index([orderId])
+    @@index([status])
+    @@map("order_status_history")
+}
