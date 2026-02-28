@@ -127,7 +127,7 @@ const updateCategory = async (id: string, data: UpdateDataType): Promise<Categor
                 updateData.slug = existing.slug;
             }
         }
-        console.log("aaaa", data, "bbb\n", updateData);
+        // console.log("aaaa", data, "bbb\n", updateData);
         return await prisma.category.update({
             where: { id },
             data: updateData,

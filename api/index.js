@@ -301,15 +301,6 @@ var auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql"
   }),
-  cookies: {
-    session_token: {
-      attributes: {
-        sameSite: "none",
-        secure: true,
-        httpOnly: true
-      }
-    }
-  },
   user: {
     additionalFields: {
       role: {
@@ -343,9 +334,21 @@ var auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET
     }
   },
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60
+      // 5 minutes
+    }
+  },
   advanced: {
     cookiePrefix: process.env.APP_NAME || "MediStore",
-    useSecureCookies: true
+    useSecureCookies: process.env.NODE_ENV === "production",
+    crossSubDomainCookies: {
+      enabled: false
+    },
+    disableCSRFCheck: true
+    // Allow requests without Origin header (Postman, mobile apps, etc.)
   }
 });
 
@@ -995,7 +998,6 @@ var updateCategory = async (id, data) => {
         updateData.slug = existing.slug;
       }
     }
-    console.log("aaaa", data, "bbb\n", updateData);
     return await prisma.category.update({
       where: { id },
       data: updateData
@@ -1572,6 +1574,15 @@ var cartRouter = router5;
 import { Router as Router6 } from "express";
 
 // src/modules/order/order.service.ts
+var VALID_TRANSITIONS = {
+  PLACED: ["PROCESSING", "CANCELLED", "CONFIRMS"],
+  CONFIRMS: ["PROCESSING", "CANCELLED"],
+  PROCESSING: ["SHIPPED", "CANCELLED"],
+  SHIPPED: ["DELIVERED"],
+  DELIVERED: [],
+  CANCELLED: []
+};
+var normalizeStatus = (s) => String(s ?? "").toUpperCase();
 var ServiceError6 = class _ServiceError extends Error {
   statusCode;
   constructor(message, statusCode = 400) {
@@ -1590,15 +1601,6 @@ var createStatusHistory = async (tx, orderId, status, changedBy, notes) => {
     }
   });
 };
-var VALID_TRANSITIONS = {
-  PLACED: ["PROCESSING", "CANCELLED", "CONFIRMS"],
-  CONFIRMS: ["PROCESSING", "CANCELLED"],
-  PROCESSING: ["SHIPPED", "CANCELLED"],
-  SHIPPED: ["DELIVERED"],
-  DELIVERED: [],
-  CANCELLED: []
-};
-var normalizeStatus = (s) => String(s ?? "").toUpperCase();
 var createOrder = async (userId, data) => {
   const { shippingName, shippingPhone, shippingAddress } = data;
   if (!shippingAddress || typeof shippingAddress !== "string" || shippingAddress.trim() === "") {
@@ -2510,10 +2512,28 @@ function errorHandler(err, req, res, next) {
 
 // src/app.ts
 var app = express2();
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  credentials: true
-}));
+var allowedOrigins = [
+  process.env.APP_URL || "http://localhost:3000",
+  process.env.PROD_APP_URL
+  // Production frontend URL
+].filter(Boolean);
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      const isAllowed = allowedOrigins.includes(origin) || /^https:\/\/next-blog-client.*\.vercel\.app$/.test(origin) || /^https:\/\/.*\.vercel\.app$/.test(origin);
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+    exposedHeaders: ["Set-Cookie"]
+  })
+);
 app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express2.json());
 app.use("/api", routes_default);
