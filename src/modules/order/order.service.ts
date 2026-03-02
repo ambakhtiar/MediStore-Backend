@@ -179,32 +179,63 @@ const createOrder = async (userId: string, data: CreateOrderType) => {
 const listOrders = async (user: User, opts: { skip?: number; take?: number } = {}) => {
     try {
         const { skip = 0, take = 50 } = opts;
-
         if (user.role === "ADMIN") {
             const orders = await prisma.order.findMany({
                 skip,
                 take,
                 orderBy: { createdAt: "desc" },
-                include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true, email: true } } },
+                include: {
+                    items: {
+                        include: {
+                            medicine: {
+                                select: {
+                                    id: true, name: true, imageUrl: true, genericName: true, manufacturer: true, sellerId: true, seller: true
+                                },
+                            }
+                        }
+                    },
+                    user: { select: { id: true, name: true, email: true } }
+                },
             });
+            // console.log(orders);
             return orders;
         }
 
+
+        const sellerId = String(user.id);
         if (user.role === "SELLER") {
-            // find orders that include at least one medicine from this seller
             const orders = await prisma.order.findMany({
                 skip,
                 take,
                 where: {
+                    // orders that include at least one item from this seller
                     items: {
                         some: {
-                            medicine: { sellerId: user.id },
+                            medicine: {
+                                sellerId: sellerId,
+                            },
                         },
                     },
                 },
                 orderBy: { createdAt: "desc" },
-                include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true } } },
+                include: {
+                    // include only items that belong to this seller
+                    items: {
+                        where: {
+                            medicine: {
+                                sellerId: sellerId,
+                            },
+                        },
+                        include: {
+                            medicine: true,
+                        },
+                    },
+                    user: {
+                        select: { id: true, name: true },
+                    },
+                },
             });
+
             return orders;
         }
 
