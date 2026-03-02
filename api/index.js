@@ -319,6 +319,7 @@ var auth = betterAuth({
       }
     }
   },
+  // baseURL: process.env.FRONTEND_URL || "https://medistore-client-eta.vercel.app",
   trustedOrigins: [
     process.env.FRONTEND_URL || "http://localhost:3000",
     process.env.BETTER_AUTH_URL || "http://localhost:5000"
@@ -346,6 +347,12 @@ var auth = betterAuth({
     useSecureCookies: process.env.NODE_ENV === "production",
     crossSubDomainCookies: {
       enabled: false
+    },
+    defaultCookieAttributes: {
+      sameSite: "none",
+      // For Cross-Origin 
+      secure: true
+      // if sameSite "none" then secure is "true"
     },
     disableCSRFCheck: true
     // Allow requests without Origin header (Postman, mobile apps, etc.)
@@ -1692,23 +1699,59 @@ var listOrders = async (user, opts = {}) => {
         skip,
         take,
         orderBy: { createdAt: "desc" },
-        include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true, email: true } } }
+        include: {
+          items: {
+            include: {
+              medicine: {
+                select: {
+                  id: true,
+                  name: true,
+                  imageUrl: true,
+                  genericName: true,
+                  manufacturer: true,
+                  sellerId: true,
+                  seller: true
+                }
+              }
+            }
+          },
+          user: { select: { id: true, name: true, email: true } }
+        }
       });
       return orders2;
     }
+    const sellerId = String(user.id);
     if (user.role === "SELLER") {
       const orders2 = await prisma.order.findMany({
         skip,
         take,
         where: {
+          // orders that include at least one item from this seller
           items: {
             some: {
-              medicine: { sellerId: user.id }
+              medicine: {
+                sellerId
+              }
             }
           }
         },
         orderBy: { createdAt: "desc" },
-        include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true } } }
+        include: {
+          // include only items that belong to this seller
+          items: {
+            where: {
+              medicine: {
+                sellerId
+              }
+            },
+            include: {
+              medicine: true
+            }
+          },
+          user: {
+            select: { id: true, name: true }
+          }
+        }
       });
       return orders2;
     }
@@ -2096,7 +2139,7 @@ var orderController = {
 // src/modules/order/order.routes.ts
 var router6 = Router6();
 router6.post("/", auth_default("CUSTOMER" /* CUSTOMER */), orderController.createOrder);
-router6.get("/", auth_default(), auth_default(), orderController.listOrders);
+router6.get("/", auth_default(), orderController.listOrders);
 router6.get("/delivered-medicines", auth_default(), orderController.getDeliveredMedicinesForReview);
 router6.get("/:id", auth_default(), orderController.getOrder);
 router6.get("/:id/track", auth_default(), orderController.getOrderStatus);
@@ -2534,6 +2577,7 @@ app.use(
     exposedHeaders: ["Set-Cookie"]
   })
 );
+app.set("trust proxy", true);
 app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express2.json());
 app.use("/api", routes_default);

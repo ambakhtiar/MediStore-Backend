@@ -7,7 +7,7 @@ const router = Router();
 
 // Customer endpoints
 router.post("/", auth(UserRole.CUSTOMER), orderController.createOrder);
-router.get("/", auth(), auth(), orderController.listOrders);
+router.get("/", auth(), orderController.listOrders);
 router.get("/delivered-medicines", auth(), orderController.getDeliveredMedicinesForReview);
 router.get("/:id", auth(), orderController.getOrder);
 router.get("/:id/track", auth(), orderController.getOrderStatus);
