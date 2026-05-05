@@ -185,11 +185,13 @@ type OrderFilters = {
     limit?: number | undefined;
     sortBy?: string | undefined;
     sortOrder?: string | undefined;
+    minTotal?: number | undefined;
+    maxTotal?: number | undefined;
 };
 
 const listOrders = async (user: User, filters: OrderFilters = {}) => {
     try {
-        const { search, status, startDate, endDate, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
+        const { search, status, startDate, endDate, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", minTotal, maxTotal } = filters;
         const skip = (page - 1) * limit;
 
         const where: any = {};
@@ -229,6 +231,13 @@ const listOrders = async (user: User, filters: OrderFilters = {}) => {
             where.createdAt = {};
             if (startDate) where.createdAt.gte = new Date(startDate);
             if (endDate) where.createdAt.lte = new Date(endDate);
+        }
+
+        // Total amount filter
+        if (minTotal !== undefined || maxTotal !== undefined) {
+            where.total = {};
+            if (minTotal !== undefined) where.total.gte = minTotal;
+            if (maxTotal !== undefined) where.total.lte = maxTotal;
         }
 
         const [items, total] = await Promise.all([
