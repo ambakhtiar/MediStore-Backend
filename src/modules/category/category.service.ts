@@ -42,6 +42,7 @@ const ensureUniqueSlug = async (base: string) => {
 
 type CategoryFilters = {
     search?: string | undefined;
+    isPrescriptionRequired?: boolean | string | undefined;
     page?: number | undefined;
     limit?: number | undefined;
     sortBy?: string | undefined;
@@ -50,7 +51,7 @@ type CategoryFilters = {
 
 const getAllCategories = async (filters: CategoryFilters = {}) => {
     try {
-        const { search, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", isPrescriptionRequired } = filters;
+        const { search, isPrescriptionRequired, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
         const skip = (page - 1) * limit;
 
         const where: any = {};

@@ -16,13 +16,13 @@ const getAllCategories = async (req: Request, res: Response) => {
     try {
         const { search } = req.query;
         const searchString = typeof search === "string" ? search.trim() : undefined;
-        
+
         const { page, limit, sortBy, sortOrder } = paginationSortingHelpers(req.query);
 
         const categories = await categoryService.getAllCategories({
             search: searchString,
-            isPrescriptionRequired: req.query.isPrescriptionRequired === "true" ? true : 
-                                    req.query.isPrescriptionRequired === "false" ? false : undefined,
+            isPrescriptionRequired: req.query.isPrescriptionRequired === "true" ? true :
+                req.query.isPrescriptionRequired === "false" ? false : undefined,
             page,
             limit,
             sortBy,

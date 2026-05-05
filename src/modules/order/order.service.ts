@@ -207,7 +207,7 @@ const listOrders = async (user: User, filters: OrderFilters = {}) => {
             where.userId = user.id;
         }
 
-        // Search (by Order ID, User Name, Email, Shipping Name, or Phone)
+        // Search (by Order ID, User Name, Email, Shipping Name, Phone, or Product Name)
         if (search) {
             where.OR = [
                 { id: { contains: search, mode: "insensitive" } },
@@ -215,6 +215,7 @@ const listOrders = async (user: User, filters: OrderFilters = {}) => {
                 { user: { email: { contains: search, mode: "insensitive" } } },
                 { shippingName: { contains: search, mode: "insensitive" } },
                 { shippingPhone: { contains: search, mode: "insensitive" } },
+                { items: { some: { medicine: { name: { contains: search, mode: "insensitive" } } } } },
             ];
         }
 
