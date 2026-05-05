@@ -28,12 +28,31 @@ const createOrder = async (req: Request, res: Response) => {
     }
 };
 
+import paginationSortingHelpers from "../../helpers/paginationSortingHelpers";
+
 const listOrders = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
         if (!user?.id) return send(res, 401, "Unauthorized");
 
-        const orders = await orderService.listOrders(user);
+        const { search, status, startDate, endDate } = req.query;
+        const searchString = typeof search === "string" ? search.trim() : undefined;
+        const statusString = typeof status === "string" ? status.trim() : undefined;
+        const startDateString = typeof startDate === "string" ? startDate : undefined;
+        const endDateString = typeof endDate === "string" ? endDate : undefined;
+
+        const { page, limit, sortBy, sortOrder } = paginationSortingHelpers(req.query);
+
+        const orders = await orderService.listOrders(user, {
+            search: searchString,
+            status: statusString,
+            startDate: startDateString,
+            endDate: endDateString,
+            page,
+            limit,
+            sortBy,
+            sortOrder
+        });
         return send(res, 200, "Orders fetched", orders);
     } catch (err) {
         return sendError(res, err, "Failed to fetch orders");

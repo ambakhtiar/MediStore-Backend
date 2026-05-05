@@ -11,11 +11,59 @@ export class ServiceError extends Error {
 }
 
 // Get all users (customers + sellers)
-const getAllUsers = async () => {
+type UserFilters = {
+    search?: string | undefined;
+    role?: string | undefined;
+    status?: string | undefined;
+    page?: number | undefined;
+    limit?: number | undefined;
+    sortBy?: string | undefined;
+    sortOrder?: string | undefined;
+};
+
+const getAllUsers = async (filters: UserFilters = {}) => {
     try {
-        return await prisma.user.findMany({
-            orderBy: { createdAt: "desc" },
-        });
+        const { search, role, status, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
+        const skip = (page - 1) * limit;
+
+        const where: any = {};
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+            ];
+        }
+        if (role) where.role = role;
+        if (status) where.status = status;
+
+        const [items, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { [sortBy]: sortOrder },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                    status: true,
+                    image: true,
+                    createdAt: true,
+                }
+            }),
+            prisma.user.count({ where }),
+        ]);
+
+        return {
+            items,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     } catch (err) {
         console.error("getAllUsers error:", err);
         throw new ServiceError("Database error while fetching users", 500);

@@ -5,11 +5,11 @@ var __export = (target, all) => {
 };
 
 // src/app.ts
-import express2 from "express";
+import express3 from "express";
 import cors from "cors";
 
 // src/routes/index.ts
-import express from "express";
+import express2 from "express";
 
 // src/modules/medicine/medicine.routes.ts
 import { Router } from "express";
@@ -2439,16 +2439,117 @@ router7.get("/users/:userId", auth_default("CUSTOMER" /* CUSTOMER */), reviewCon
 router7.get("/:id", reviewController.getReview);
 var reviewRouter = router7;
 
-// src/routes/index.ts
+// src/modules/admin/admin.routes.ts
+import express from "express";
+
+// src/modules/admin/admin.service.ts
+var getStats = async () => {
+  const totalRevenueResult = await prisma.order.aggregate({
+    _sum: { total: true },
+    where: { status: { not: "CANCELLED" } }
+  });
+  const totalRevenue = totalRevenueResult._sum.total || 0;
+  const totalUsers = await prisma.user.count();
+  const totalCustomers = await prisma.user.count({ where: { role: "CUSTOMER" } });
+  const totalSellers = await prisma.user.count({ where: { role: "SELLER" } });
+  const bannedUsers = await prisma.user.count({ where: { status: "BAN" } });
+  const totalOrders = await prisma.order.count();
+  const pendingOrders = await prisma.order.count({ where: { status: "PLACED" } });
+  const deliveredOrders = await prisma.order.count({ where: { status: "DELIVERED" } });
+  const cancelledOrders = await prisma.order.count({ where: { status: "CANCELLED" } });
+  const totalMedicines = await prisma.medicine.count();
+  const activeMedicines = await prisma.medicine.count({ where: { isActive: true } });
+  const featuredMedicines = await prisma.medicine.count({ where: { isFeatured: true } });
+  const ordersByStatusRaw = await prisma.order.groupBy({
+    by: ["status"],
+    _count: { status: true }
+  });
+  const ordersByStatus = ordersByStatusRaw.map((item) => ({
+    status: item.status,
+    count: item._count.status
+  }));
+  const sixMonthsAgo = /* @__PURE__ */ new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const recentOrders = await prisma.order.findMany({
+    where: {
+      status: { not: "CANCELLED" },
+      createdAt: { gte: sixMonthsAgo }
+    },
+    select: {
+      total: true,
+      createdAt: true
+    }
+  });
+  const revenueByMonthMap = {};
+  recentOrders.forEach((order) => {
+    const monthYear = order.createdAt.toLocaleString("default", { month: "short", year: "numeric" });
+    revenueByMonthMap[monthYear] = (revenueByMonthMap[monthYear] || 0) + Number(order.total);
+  });
+  const revenueByMonth = Object.entries(revenueByMonthMap).map(([month, revenue]) => ({
+    month,
+    revenue
+  })).reverse();
+  const recentTransactions = await prisma.order.findMany({
+    take: 5,
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: { select: { name: true, email: true } }
+    }
+  });
+  return {
+    totalRevenue,
+    totalOrders,
+    totalUsers,
+    totalCustomers,
+    totalSellers,
+    bannedUsers,
+    pendingOrders,
+    deliveredOrders,
+    cancelledOrders,
+    totalMedicines,
+    activeMedicines,
+    featuredMedicines,
+    charts: {
+      ordersByStatus,
+      revenueByMonth
+    },
+    recentTransactions
+  };
+};
+var AdminService = {
+  getStats
+};
+
+// src/modules/admin/admin.controller.ts
+var send8 = (res, code, message, data) => res.status(code).json({ success: code >= 200 && code < 300, message, data });
+var getStats2 = async (req, res) => {
+  try {
+    const result = await AdminService.getStats();
+    return send8(res, 200, "Admin stats retrieved successfully", result);
+  } catch (err) {
+    return send8(res, 500, err?.message || "Failed to retrieve admin stats");
+  }
+};
+var AdminController = {
+  getStats: getStats2
+};
+
+// src/modules/admin/admin.routes.ts
 var router8 = express.Router();
-router8.use("/medicines", medicineRouter);
-router8.use("/categories", categoryRouter);
-router8.use("/profile", profileRouter);
-router8.use("/cart", cartRouter);
-router8.use("/orders", orderRouter);
-router8.use("/reviews", reviewRouter);
-router8.use("/admin/users", auth_default("ADMIN" /* ADMIN */), userRouter);
-var routes_default = router8;
+router8.get("/stats", auth_default("ADMIN" /* ADMIN */), AdminController.getStats);
+var adminRouter = router8;
+
+// src/routes/index.ts
+var router9 = express2.Router();
+router9.use("/medicines", medicineRouter);
+router9.use("/categories", categoryRouter);
+router9.use("/profile", profileRouter);
+router9.use("/cart", cartRouter);
+router9.use("/orders", orderRouter);
+router9.use("/reviews", reviewRouter);
+router9.use("/admin/users", auth_default("ADMIN" /* ADMIN */), userRouter);
+router9.use("/admin", adminRouter);
+var routes_default = router9;
 
 // src/app.ts
 import { toNodeHandler } from "better-auth/node";
@@ -2554,7 +2655,7 @@ function errorHandler(err, req, res, next) {
 }
 
 // src/app.ts
-var app = express2();
+var app = express3();
 var allowedOrigins = [
   process.env.APP_URL || "http://localhost:3000",
   process.env.PROD_APP_URL
@@ -2579,7 +2680,7 @@ app.use(
 );
 app.set("trust proxy", true);
 app.all("/api/auth/*splat", toNodeHandler(auth));
-app.use(express2.json());
+app.use(express3.json());
 app.use("/api", routes_default);
 app.get("/", (req, res) => {
   res.send("Hello World!");
