@@ -661,8 +661,8 @@ var medicineService = {
 
 // src/helpers/paginationSortingHelpers.ts
 var paginationSortingHelpers = (option) => {
-  const page = Number(option.page) || 1;
-  const limit = Number(option.limit) || 10;
+  const page = Math.max(1, Number(option.page) || 1);
+  const limit = Math.max(1, Number(option.limit) || 10);
   const skip = (page - 1) * limit;
   const sortBy = option.sortBy || "createdAt";
   const sortOrder = option.sortOrder || "desc";
@@ -845,11 +845,46 @@ var ServiceError2 = class _ServiceError extends Error {
     Object.setPrototypeOf(this, _ServiceError.prototype);
   }
 };
-var getAllUsers = async () => {
+var getAllUsers = async (filters = {}) => {
   try {
-    return await prisma.user.findMany({
-      orderBy: { createdAt: "desc" }
-    });
+    const { search, role, status, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
+    const skip = (page - 1) * limit;
+    const where = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } }
+      ];
+    }
+    if (role) where.role = role;
+    if (status) where.status = status;
+    const [items, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          image: true,
+          createdAt: true
+        }
+      }),
+      prisma.user.count({ where })
+    ]);
+    return {
+      items,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   } catch (err) {
     console.error("getAllUsers error:", err);
     throw new ServiceError2("Database error while fetching users", 500);
@@ -882,7 +917,20 @@ var sendError = (res, err, fallback) => {
 };
 var getAllUsers2 = async (req, res) => {
   try {
-    const users = await userService.getAllUsers();
+    const { search, role, status } = req.query;
+    const searchString = typeof search === "string" ? search.trim() : void 0;
+    const roleString = typeof role === "string" ? role.trim() : void 0;
+    const statusString = typeof status === "string" ? status.trim() : void 0;
+    const { page, limit, sortBy, sortOrder } = paginationSortingHelpers_default(req.query);
+    const users = await userService.getAllUsers({
+      search: searchString,
+      role: roleString,
+      status: statusString,
+      page,
+      limit,
+      sortBy,
+      sortOrder
+    });
     return send2(res, 200, "Users fetched successfully", users);
   } catch (err) {
     return sendError(res, err, "Failed to fetch users");
@@ -935,11 +983,38 @@ var ensureUniqueSlug = async (base) => {
     candidate = `${base}-${i++}`;
   }
 };
-var getAllCategories = async () => {
+var getAllCategories = async (filters = {}) => {
   try {
-    return await prisma.category.findMany({
-      orderBy: { createdAt: "desc" }
-    });
+    const { search, isPrescriptionRequired, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
+    const skip = (page - 1) * limit;
+    const where = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } }
+      ];
+    }
+    if (isPrescriptionRequired !== void 0) {
+      where.isPrescriptionRequired = isPrescriptionRequired === "true" || isPrescriptionRequired === true;
+    }
+    const [items, total] = await Promise.all([
+      prisma.category.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder }
+      }),
+      prisma.category.count({ where })
+    ]);
+    return {
+      items,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   } catch (err) {
     console.error("getAllCategories error:", err);
     throw new ServiceError3("Database error while fetching categories", 500);
@@ -1045,9 +1120,19 @@ var sendError2 = (res, err, fallback) => {
   const message = err?.message || fallback;
   return res.status(status).json({ message });
 };
-var getAllCategories2 = async (_req, res) => {
+var getAllCategories2 = async (req, res) => {
   try {
-    const categories = await categoryService.getAllCategories();
+    const { search } = req.query;
+    const searchString = typeof search === "string" ? search.trim() : void 0;
+    const { page, limit, sortBy, sortOrder } = paginationSortingHelpers_default(req.query);
+    const categories = await categoryService.getAllCategories({
+      search: searchString,
+      isPrescriptionRequired: req.query.isPrescriptionRequired === "true" ? true : req.query.isPrescriptionRequired === "false" ? false : void 0,
+      page,
+      limit,
+      sortBy,
+      sortOrder
+    });
     return send3(res, 200, "Categories fetched successfully", categories);
   } catch (err) {
     return sendError2(res, err, "Failed to fetch categories");
@@ -1691,14 +1776,51 @@ var createOrder = async (userId, data) => {
     throw new ServiceError6("Failed to create order", 500);
   }
 };
-var listOrders = async (user, opts = {}) => {
+var listOrders = async (user, filters = {}) => {
   try {
-    const { skip = 0, take = 50 } = opts;
-    if (user.role === "ADMIN") {
-      const orders2 = await prisma.order.findMany({
+    const { search, status, startDate, endDate, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", minTotal, maxTotal } = filters;
+    const skip = (page - 1) * limit;
+    const where = {};
+    if (user.role === "SELLER") {
+      where.items = {
+        some: {
+          medicine: {
+            sellerId: user.id
+          }
+        }
+      };
+    } else if (user.role === "CUSTOMER") {
+      where.userId = user.id;
+    }
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: "insensitive" } },
+        { user: { name: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { shippingName: { contains: search, mode: "insensitive" } },
+        { shippingPhone: { contains: search, mode: "insensitive" } },
+        { items: { some: { medicine: { name: { contains: search, mode: "insensitive" } } } } }
+      ];
+    }
+    if (status) {
+      where.status = status;
+    }
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+    if (minTotal !== void 0 || maxTotal !== void 0) {
+      where.total = {};
+      if (minTotal !== void 0) where.total.gte = minTotal;
+      if (maxTotal !== void 0) where.total.lte = maxTotal;
+    }
+    const [items, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
         skip,
-        take,
-        orderBy: { createdAt: "desc" },
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
         include: {
           items: {
             include: {
@@ -1709,60 +1831,25 @@ var listOrders = async (user, opts = {}) => {
                   imageUrl: true,
                   genericName: true,
                   manufacturer: true,
-                  sellerId: true,
-                  seller: true
+                  sellerId: true
                 }
               }
             }
           },
           user: { select: { id: true, name: true, email: true } }
         }
-      });
-      return orders2;
-    }
-    const sellerId = String(user.id);
-    if (user.role === "SELLER") {
-      const orders2 = await prisma.order.findMany({
-        skip,
-        take,
-        where: {
-          // orders that include at least one item from this seller
-          items: {
-            some: {
-              medicine: {
-                sellerId
-              }
-            }
-          }
-        },
-        orderBy: { createdAt: "desc" },
-        include: {
-          // include only items that belong to this seller
-          items: {
-            where: {
-              medicine: {
-                sellerId
-              }
-            },
-            include: {
-              medicine: true
-            }
-          },
-          user: {
-            select: { id: true, name: true }
-          }
-        }
-      });
-      return orders2;
-    }
-    const orders = await prisma.order.findMany({
-      skip,
-      take,
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      include: { items: { include: { medicine: true } } }
-    });
-    return orders;
+      }),
+      prisma.order.count({ where })
+    ]);
+    return {
+      items,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
   } catch (err) {
     console.error("listOrders error:", err);
     throw new ServiceError6("Failed to list orders", 500);
@@ -2038,7 +2125,26 @@ var listOrders2 = async (req, res) => {
   try {
     const user = req.user;
     if (!user?.id) return send6(res, 401, "Unauthorized");
-    const orders = await orderService.listOrders(user);
+    const { search, status, startDate, endDate, minTotal, maxTotal } = req.query;
+    const searchString = typeof search === "string" ? search.trim() : void 0;
+    const statusString = typeof status === "string" ? status.trim() : void 0;
+    const startDateString = typeof startDate === "string" ? startDate : void 0;
+    const endDateString = typeof endDate === "string" ? endDate : void 0;
+    const minTotalNum = typeof minTotal === "string" && minTotal !== "" && !isNaN(Number(minTotal)) ? Number(minTotal) : void 0;
+    const maxTotalNum = typeof maxTotal === "string" && maxTotal !== "" && !isNaN(Number(maxTotal)) ? Number(maxTotal) : void 0;
+    const { page, limit, sortBy, sortOrder } = paginationSortingHelpers_default(req.query);
+    const orders = await orderService.listOrders(user, {
+      search: searchString,
+      status: statusString,
+      startDate: startDateString,
+      endDate: endDateString,
+      minTotal: minTotalNum,
+      maxTotal: maxTotalNum,
+      page,
+      limit,
+      sortBy,
+      sortOrder
+    });
     return send6(res, 200, "Orders fetched", orders);
   } catch (err) {
     return sendError5(res, err, "Failed to fetch orders");
