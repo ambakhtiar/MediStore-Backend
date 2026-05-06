@@ -8,6 +8,7 @@ import { profileRouter } from "../modules/profile/profile.routes";
 import { cartRouter } from "../modules/cart/cart.routes";
 import { orderRouter } from "../modules/order/order.routes";
 import { reviewRouter } from "../modules/review/review.routes";
+import { adminRouter } from "../modules/admin/admin.routes";
 
 const router = express.Router();
 
@@ -18,6 +19,6 @@ router.use('/cart', cartRouter);
 router.use('/orders', orderRouter);
 router.use('/reviews', reviewRouter);
 router.use('/admin/users', auth(UserRole.ADMIN), userRouter);
-
+router.use('/admin', adminRouter);
 
 export default router;

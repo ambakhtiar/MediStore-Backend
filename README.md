@@ -1,548 +1,425 @@
-# MediStore Backend API 💊
+<div align="center">
 
-> RESTful API for MediStore - Online Medicine E-commerce Platform
+# 💊 MediStore — Backend API
 
-[![Live API](https://img.shields.io/badge/Live-API-success?style=for-the-badge)](https://medistore-server-sepia.vercel.app)
-[![Backend Repo](https://img.shields.io/badge/GitHub-Backend-green?style=for-the-badge&logo=github)](https://github.com/ambakhtiar/MediStore-Backend)
-[![Frontend Repo](https://img.shields.io/badge/GitHub-Frontend-blue?style=for-the-badge&logo=github)](https://github.com/ambakhtiar/MediStore-Frontend)
+**An enterprise-grade, multi-role REST API powering Bangladesh's online medicine e-commerce platform — built for reliability, security, and scale.**
 
-## 📋 Table of Contents
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-4.x-000000.svg?logo=express&logoColor=white)](https://expressjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748.svg?logo=prisma&logoColor=white)](https://www.prisma.io/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16.x-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Zod](https://img.shields.io/badge/Zod-3.x-3068B7.svg)](https://zod.dev/)
+[![Deployed on Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000.svg?logo=vercel&logoColor=white)](https://medistore-med.vercel.app)
+[![License](https://img.shields.io/badge/License-MIT-8B5CF6.svg)](LICENSE)
 
-- [About](#about)
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Database Schema](#database-schema)
-- [API Endpoints](#api-endpoints)
-- [Getting Started](#getting-started)
-- [Environment Variables](#environment-variables)
-- [Deployment](#deployment)
-- [Security](#security)
-- [License](#license)
+<p>
+  <a href="#-project-overview">Overview</a> •
+  <a href="#-role-based-access-rbac">RBAC</a> •
+  <a href="#-system-architecture">Architecture</a> •
+  <a href="#-database-schema">Database</a> •
+  <a href="#-api-reference">API Docs</a> •
+  <a href="#-getting-started">Setup</a>
+</p>
 
-## 🎯 About
+</div>
 
-MediStore Backend is a robust RESTful API built with Node.js, Express, and PostgreSQL. It provides secure authentication, role-based access control, and comprehensive medicine e-commerce functionality.
+---
 
-**Live API:** [https://medistore-server-sepia.vercel.app](https://medistore-server-sepia.vercel.app)
+## 📖 Project Overview
 
-<!-- **API Documentation:** Available at `/api/docs` (if implemented) -->
+**MediStore Backend** is a production-ready RESTful API server for an online medicine e-commerce platform. It solves a critical real-world problem in Bangladesh — the lack of a trustworthy, organized digital platform where customers can purchase medicines, sellers can manage inventory, and administrators can maintain platform integrity.
 
-## ✨ Features
+The system implements strict **Role-Based Access Control (RBAC)**, session-based authentication via Better Auth, and a clean modular architecture designed for maintainability and production deployment.
 
-### 🔐 Authentication & Authorization
-- User registration with role selection (Customer/Seller)
-- Secure login with session management (Better Auth)
-- Batter-Auth based authentication
-- Role-based access control (Customer, Seller, Admin)
-- **Ban system:** Banned users cannot login
-- Password hashing with bcrypt
-- Protected routes with middleware
+> **Live API Base URL:** `https://medistore-med.vercel.app`
+>
+> **Frontend:** [https://medistore-medicine.vercel.app](https://medistore-medicine.vercel.app) · **Frontend Repo:** [MediStore-Frontend](https://github.com/ambakhtiar/MediStore-Frontend)
 
-### 💊 Medicine Management
-- CRUD operations for medicines (Seller only)
-- Medicine categorization
-- Stock management
-- Advanced search and filtering
-- Pagination support
-- Multi Seller feature
+---
 
-### 🛒 Order Processing
-- Create orders with multiple items
-- Order status tracking (Pending → Processing → Shipped → Delivered)
-- Order cancellation (before confirmation)
-- Cash on Delivery (COD) payment
-- Order history for customers
-- Order management for sellers and admins
+## 🛡️ Role-Based Access (RBAC)
 
-### 👥 User Management
-- User profile management
-- Admin can view all users
-- **Ban/Unban functionality** (Admin only)
-- User status tracking (Active/Banned)
-- Seller verification system
+The platform adapts every endpoint based on the authenticated user's role. Three roles govern the entire permission structure:
 
-### ⭐ Review System
-- Customers can review delivered products
-- Edit and delete own reviews
-- Rating system (1-5 stars)
-- Review validation (must have delivered order)
+| Role | Core Capabilities |
+|:---|:---|
+| 🛒 **Customer** | Browse medicines, place orders, cancel pending orders, review delivered products |
+| 🏪 **Seller** | Manage their own medicine inventory, process orders, view seller analytics |
+| 👑 **Admin** | Full platform oversight — user management, ban/unban, all medicines & orders |
 
-### 🏷️ Category Management
-- CRUD operations for categories (Admin only)
-- Category-based medicine filtering
-- Prescription requirement flag
+---
 
-## 🛠️ Tech Stack
+## 🏗 System Architecture
 
-- **Runtime:** Node.js 18+
-- **Framework:** Express.js
-- **Language:** TypeScript
-- **Database:** PostgreSQL
-- **ORM:** Prisma
-- **Authentication:** Better Auth
-- **Validation:** Zod
-- **Security:** Helmet, CORS
-- **Deployment:** Vercel 
+The application follows a strict **Controller → Service → Repository** pattern via Prisma ORM, ensuring full decoupling of business logic from routing and data access.
+
+```
+Client Request
+      │
+      ▼
+┌─────────────────────────────────────┐
+│  Express Router                     │
+│  · Route registration per module   │
+│  · Middleware chain attachment      │
+└─────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────┐
+│  Auth & RBAC Middleware             │
+│  · Better Auth session validation  │
+│  · Role-based route protection     │
+│  · Ban check on every login        │
+└─────────────────────────────────────┘
+      │
+      ▼
+┌──────────────┐   ┌──────────────┐
+│  Controller  │──▶│   Service    │
+│  (thin layer)│   │(business logic)│
+└──────────────┘   └──────┬───────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │  Prisma ORM  │
+                   └──────┬───────┘
+                          │
+                   ┌──────▼───────┐
+                   │  PostgreSQL  │
+                   └──────────────┘
+```
+
+### 📂 Folder Structure
+
+```
+src/
+├── config/              # Centralised, type-safe environment config
+├── middleware/          # Auth, RBAC Guard, Global Error, Not Found
+│   ├── auth.ts
+│   ├── errorHandler.ts
+│   └── validator.ts
+├── modules/             # Domain-driven feature modules
+│   ├── auth/            # Login, Register, Session management
+│   ├── medicine/        # CRUD, search, filtering, stock
+│   ├── order/           # Order lifecycle management
+│   ├── category/        # Category CRUD (Admin only)
+│   ├── review/          # Delivery-gated review system
+│   └── user/            # Profile, ban/unban management
+├── prisma/              # Prisma schema & migrations
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── seed.ts
+├── types/               # TypeScript interfaces
+├── utils/               # Helper functions & AppError class
+├── app.ts               # Express app setup
+└── server.ts            # Entry point
+```
+
+Each module follows a strict **3-file pattern**:
+```
+modules/[name]/
+├── [name].controller.ts    # Thin: calls service, formats response
+├── [name].service.ts       # All business logic + domain rules
+└── [name].routes.ts        # Route definitions + middleware chain
+```
+
+---
+
+## 🚀 Core Features
+
+- **🔐 Session-Based Auth** — Better Auth with ban enforcement; banned users receive 403 on every login attempt
+- **💊 Multi-Seller Inventory** — Sellers independently manage their own medicine catalogue with stock tracking, discount percentages, and featured flags
+- **🛒 Full Order Lifecycle** — `PENDING → PROCESSING → SHIPPED → DELIVERED → CANCELLED` with per-status history tracking
+- **⭐ Delivery-Gated Reviews** — Customers can only review a medicine they have received; prevents spam and fake ratings
+- **🚫 Admin Ban System** — Admins can ban/unban any user; banned users are locked out at the auth layer
+- **☁️ Optional Image Uploads** — Cloudinary integration for medicine and profile images
+- **📊 Role Dashboards** — Seller stats and admin platform-wide analytics endpoints
+- **🔒 Layered Security** — Helmet, CORS, rate limiting, Zod input validation, bcrypt, SQL injection prevention via Prisma
+
+---
 
 ## 🗄️ Database Schema
 
-### Users Table
+All entities use UUID primary keys. The schema enforces referential integrity through Prisma relations.
+
 ```prisma
 model User {
-  id            String   @id @default(uuid())
+  id            String     @id @default(uuid())
   name          String
-  email         String   @unique
-  password      String
-  phone         String?
-  role          Role     @default(CUSTOMER)
-  status        Status   @default(ACTIVE)
-  image         String?
-  emailVerified Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  // Relations
+  email         String     @unique
+  role          Role       @default(CUSTOMER)
+  status        Status     @default(ACTIVE)
   orders        Order[]
   reviews       Review[]
-  medicines     Medicine[] // For sellers
+  medicines     Medicine[] // Seller's inventory
   sessions      Session[]
 }
 
-enum Role {
-  CUSTOMER
-  SELLER
-  ADMIN
-}
+enum Role   { CUSTOMER  SELLER  ADMIN }
+enum Status { ACTIVE    BAN }
 
-enum Status {
-  ACTIVE
-  BAN
-}
-```
-
-### Categories Table
-```prisma
-model Category {
-  id                      String     @id @default(uuid())
-  name                    String     @unique
-  slug                    String     @unique
-  description             String?
-  isPrescriptionRequired  Boolean    @default(false)
-  createdAt               DateTime   @default(now())
-  updatedAt               DateTime   @updatedAt
-  
-  // Relations
-  medicines               Medicine[]
-}
-```
-
-### Medicines Table
-```prisma
 model Medicine {
-  id                  String    @id @default(uuid())
-  name                String
-  genericName         String
-  manufacturer        String
-  description         String
-  price               Float
-  discountPercentage  Float?    @default(0)
-  stock               Int
-  imageUrl            String?
-  dosageForm          String
-  strength            String
-  categoryId          String
-  sellerId            String
-  isActive            Boolean   @default(true)
-  isFeatured          Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  
-  // Relations
-  category            Category  @relation(fields: [categoryId], references: [id])
-  seller              User      @relation(fields: [sellerId], references: [id])
-  orderItems          OrderItem[]
-  reviews             Review[]
+  id                 String   @id @default(uuid())
+  name               String
+  genericName        String
+  manufacturer       String
+  price              Float
+  discountPercentage Float?   @default(0)
+  stock              Int
+  isFeatured         Boolean  @default(false)
+  categoryId         String
+  sellerId           String
+  orderItems         OrderItem[]
+  reviews            Review[]
 }
-```
 
-### Orders Table
-```prisma
 model Order {
-  id              String       @id @default(uuid())
-  orderNumber     String       @unique
-  userId          String
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
   totalAmount     Float
-  status          OrderStatus  @default(PENDING)
+  status          OrderStatus @default(PENDING)
   shippingAddress String
-  phone           String
-  notes           String?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  
-  // Relations
-  user            User         @relation(fields: [userId], references: [id])
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
 }
 
-enum OrderStatus {
-  PENDING
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
-```
+enum OrderStatus { PENDING  PROCESSING  SHIPPED  DELIVERED  CANCELLED }
 
-### OrderItems Table
-```prisma
-model OrderItem {
-  id          String   @id @default(uuid())
-  orderId     String
-  medicineId  String
-  quantity    Int
-  unitPrice   Float
-  totalPrice  Float
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  order       Order    @relation(fields: [orderId], references: [id])
-  medicine    Medicine @relation(fields: [medicineId], references: [id])
-}
-```
-
-### Reviews Table
-```prisma
 model Review {
-  id          String   @id @default(uuid())
-  rating      Int      // 1-5
-  comment     String?
-  userId      String
-  medicineId  String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id])
-  medicine    Medicine @relation(fields: [medicineId], references: [id])
-  
-  @@unique([userId, medicineId])
+  id         String @id @default(uuid())
+  rating     Int    // 1–5
+  comment    String?
+  userId     String
+  medicineId String
+  @@unique([userId, medicineId])  // One review per product per customer
 }
 ```
 
-## 🔌 API Endpoints
+**Key Design Decisions:**
+
+- `@@unique([userId, medicineId])` on `Review` prevents duplicate reviews without application-level checks
+- `OrderStatusHistory` tracks every status transition with timestamps for full audit trail
+- `status: BAN` on `User` is checked at the authentication middleware layer — not the controller — so no ban bypass is possible
+
+---
+
+## 🔒 Security Design
+
+| Layer | Mechanism |
+|---|---|
+| Password storage | bcrypt (12 salt rounds) |
+| Session management | Better Auth with HttpOnly cookies |
+| Input validation | Zod schemas before every controller |
+| SQL injection | Prevented by Prisma ORM parameterisation |
+| XSS protection | Helmet.js security headers |
+| Rate limiting | Express rate-limit middleware |
+| CORS | Restricted to approved frontend origins |
+| Ban enforcement | Checked at auth middleware, not controller |
+
+---
+
+## 🔌 API Reference
+
+**Base URL:** `https://medistore-med.vercel.app`
 
 ### Authentication
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| POST | `/api/auth/register` | Register new user | Public |
-| POST | `/api/auth/login` | Login user | Public |
-| POST | `/api/auth/logout` | Logout user | Private |
-| GET | `/api/auth/session` | Get current session | Private |
 
-**Note:** Login checks user status - banned users receive 403 error
-
-### Medicines (Public)
 | Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| GET | `/api/medicines` | Get all medicines with filters | Public |
-| GET | `/api/medicines/:id` | Get medicine details | Public |
+|---|---|---|---|
+| POST | `/api/auth/register` | Register — Customer or Seller | Public |
+| POST | `/api/auth/login` | Authenticate; banned users get 403 | Public |
+| POST | `/api/auth/logout` | Invalidate current session | 🔐 |
+| GET | `/api/auth/session` | Fetch current session details | 🔐 |
+
+### Medicines
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| GET | `/api/medicines` | Browse all medicines with filters & pagination | Public |
+| GET | `/api/medicines/:id` | Single medicine detail | Public |
+| POST | `/api/seller/medicines` | Add new medicine | 🔐 Seller |
+| PUT | `/api/seller/medicines/:id` | Update medicine | 🔐 Seller (own) |
+| DELETE | `/api/seller/medicines/:id` | Remove medicine | 🔐 Seller (own) |
 
 ### Categories
+
 | Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| GET | `/api/categories` | Get all categories | Public |
-| POST | `/api/categories` | Create category | Admin |
-| PUT | `/api/categories/:id` | Update category | Admin |
-| DELETE | `/api/categories/:id` | Delete category | Admin |
+|---|---|---|---|
+| GET | `/api/categories` | All categories | Public |
+| POST | `/api/categories` | Create category | 🔐 Admin |
+| PUT | `/api/categories/:id` | Update category | 🔐 Admin |
+| DELETE | `/api/categories/:id` | Delete category | 🔐 Admin |
 
 ### Orders
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| POST | `/api/orders` | Create new order | Customer |
-| GET | `/api/orders` | Get user's orders | Private |
-| GET | `/api/orders/:id` | Get order details | Private |
-| PATCH | `/api/orders/:id/cancel` | Cancel order | Customer |
 
-### Seller Routes
 | Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| GET | `/api/seller/dashboard` | Get seller stats | Seller |
-| GET | `/api/seller/medicines` | Get seller's medicines | Seller |
-| POST | `/api/seller/medicines` | Add new medicine | Seller |
-| PUT | `/api/seller/medicines/:id` | Update medicine | Seller |
-| DELETE | `/api/seller/medicines/:id` | Delete medicine | Seller |
-| GET | `/api/seller/orders` | Get seller's orders | Seller |
-| PATCH | `/api/seller/orders/:id/status` | Update order status | Seller |
-
-### Admin Routes
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| GET | `/api/admin/dashboard` | Get platform statistics | Admin |
-| GET | `/api/admin/users` | Get all users | Admin |
-| PATCH | `/api/admin/users/:id/status` | **Ban/Unban user** | Admin |
-| GET | `/api/admin/medicines` | Get all medicines | Admin |
-| GET | `/api/admin/orders` | Get all orders | Admin |
+|---|---|---|---|
+| POST | `/api/orders` | Place a new order | 🔐 Customer |
+| GET | `/api/orders` | My order history | 🔐 Customer |
+| GET | `/api/orders/:id` | Order detail | 🔐 Private |
+| PATCH | `/api/orders/:id/cancel` | Cancel (before Processing) | 🔐 Customer |
+| PATCH | `/api/seller/orders/:id/status` | Advance order status | 🔐 Seller |
 
 ### Reviews
-| Method | Endpoint | Description | Access |
-|--------|----------|-------------|--------|
-| POST | `/api/reviews/medicines/:id` | Create review | Customer |
-| GET | `/api/reviews/medicines/:id` | Get medicine reviews | Public |
-| GET | `/api/reviews/users/:userId` | Get user's reviews | Private |
-| PUT | `/api/reviews/:id` | Update review | Customer |
-| DELETE | `/api/reviews/:id` | Delete review | Customer |
-| GET | `/api/orders/delivered-medicines` | Get medicines for review | Customer |
 
-## 🚀 Getting Started
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| POST | `/api/reviews/medicines/:id` | Submit review (delivered orders only) | 🔐 Customer |
+| GET | `/api/reviews/medicines/:id` | Fetch all reviews for a medicine | Public |
+| PUT | `/api/reviews/:id` | Edit own review | 🔐 Customer |
+| DELETE | `/api/reviews/:id` | Delete own review | 🔐 Customer |
+
+### Seller Dashboard
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| GET | `/api/seller/dashboard` | Sales stats, stock overview | 🔐 Seller |
+| GET | `/api/seller/medicines` | My listed medicines | 🔐 Seller |
+| GET | `/api/seller/orders` | Orders for my medicines | 🔐 Seller |
+
+### Admin Panel
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| GET | `/api/admin/dashboard` | Platform-wide analytics | 🔐 Admin |
+| GET | `/api/admin/users` | All registered users | 🔐 Admin |
+| PATCH | `/api/admin/users/:id/status` | **Ban / Unban a user** | 🔐 Admin |
+| GET | `/api/admin/medicines` | All medicines across sellers | 🔐 Admin |
+| GET | `/api/admin/orders` | All platform orders | 🔐 Admin |
+
+### Standardised API Response Format
+
+```json
+// Success
+{ "ok": true, "status": 200, "message": "...", "data": { } }
+
+// Error
+{ "ok": false, "status": 400, "message": "...", "error": { "details": "..." } }
+```
+
+---
+
+## ⚙️ Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ installed
-- PostgreSQL database
-- npm or yarn package manager
+- Node.js 18+
+- PostgreSQL database (local or cloud — Supabase, Neon, Railway)
+- npm or yarn
 
-### Installation
+### 1. Clone & Install
 
-1. **Clone the repository**
 ```bash
 git clone https://github.com/ambakhtiar/MediStore-Backend.git
 cd MediStore-Backend
-```
-
-2. **Install dependencies**
-```bash
 npm install
-# or
-yarn install
 ```
 
-3. **Set up environment variables**
+### 2. Configure Environment
+
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration (see [Environment Variables](#environment-variables))
+### 3. Database Setup
 
-4. **Set up database**
 ```bash
-# Generate Prisma Client
 npx prisma generate
-
-# Run migrations
 npx prisma migrate dev
-
-# Seed database (creates admin user)
-npx prisma db seed
+npx prisma db seed   # Seeds admin account + sample data
 ```
 
-5. **Run development server**
+### 4. Start Dev Server
+
 ```bash
 npm run dev
-# or
-yarn dev
+# Server starts at http://localhost:5000
 ```
 
-6. **Server running at**
-```
-http://localhost:5000
-```
+---
 
-## 🔐 Environment Variables
-
-Create a `.env` file in the root directory:
+## 🔧 Environment Variables
 
 ```env
-# Database
+# ── Database ─────────────────────────────────────────
 DATABASE_URL="postgresql://user:password@localhost:5432/medistore"
 
-# Server
+# ── Server ────────────────────────────────────────────
 PORT=5000
 NODE_ENV=development
 
-# Better Auth
+# ── Better Auth ───────────────────────────────────────
 BETTER_AUTH_SECRET="your-secret-key-here"
-BETTER_AUTH_URL="http://localhost:5000"
+BETTER_AUTH_URL="http://localhost:3000"
 
-# Frontend URL (for CORS)
+# ── CORS ──────────────────────────────────────────────
 FRONTEND_URL="http://localhost:3000"
 
-# JWT (if using separate JWT)
-JWT_SECRET="your-jwt-secret"
-JWT_EXPIRES_IN="7d"
-
-# File Upload (Cloudinary - optional)
+# ── Cloudinary (optional) ─────────────────────────────
 CLOUDINARY_CLOUD_NAME="your-cloud-name"
 CLOUDINARY_API_KEY="your-api-key"
 CLOUDINARY_API_SECRET="your-api-secret"
 ```
 
-### Environment Variables Explanation
+> ⚠️ Never commit `.env` to version control.
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `PORT` | Server port number | Yes |
-| `NODE_ENV` | Environment (development/production) | Yes |
-| `BETTER_AUTH_SECRET` | Secret key for Better Auth | Yes |
-| `BETTER_AUTH_URL` | Backend URL for auth | Yes |
-| `FRONTEND_URL` | Frontend URL for CORS | Yes |
-| `JWT_SECRET` | JWT signing secret | If using JWT |
-| `CLOUDINARY_*` | Cloudinary credentials | If using Cloudinary |
-
-## 📦 Deployment
-
-### Deploy to Vercel
-
-1. **Install Vercel CLI**
-```bash
-npm install -g vercel
-```
-
-2. **Deploy**
-```bash
-vercel
-```
-
-3. **Set environment variables**
-```bash
-vercel env add DATABASE_URL
-vercel env add BETTER_AUTH_SECRET
-# Add all other env variables
-```
-
-4. **Deploy to production**
-```bash
-vercel --prod
-```
-
-### Deploy to Render
-
-1. Create new Web Service on [render.com](https://render.com)
-2. Connect GitHub repository
-3. Set build command: `npm install && npx prisma generate && npm run build`
-4. Set start command: `npm start`
-5. Add environment variables
-6. Deploy
-
-## 🔒 Security Features
-
-- ✅ CORS configuration
-- ✅ Rate limiting
-- ✅ SQL injection prevention (Prisma)
-- ✅ XSS protection
-- ✅ Password hashing (bcrypt)
-- ✅ JWT/Session-based authentication
-- ✅ Input validation (Zod)
-- ✅ **Ban system for malicious users**
-- ✅ Role-based access control 
-- ✅ Helmet.js for security headers
-
-## 🗂️ Project Structure
-
-```
-src/
-├── config/              # Configuration files
-│   └── database.ts
-├── middleware/          # Express middleware
-│   ├── auth.ts
-│   ├── errorHandler.ts
-│   └── validator.ts
-├── modules/             # Feature modules
-│   ├── auth/
-│   │   ├── auth.controller.ts
-│   │   ├── auth.service.ts
-│   │   └── auth.routes.ts
-│   ├── medicine/
-│   ├── order/
-│   ├── category/
-│   ├── review/
-│   └── user/
-├── prisma/              # Prisma schema & migrations
-│   ├── schema.prisma
-│   ├── migrations/
-│   └── seed.ts
-├── types/               # TypeScript types
-├── utils/               # Utility functions
-│   ├── helpers.ts
-│   └── error.ts
-├── app.ts               # Express app setup
-└── server.ts            # Server entry point
-```
-
-## 🧪 Testing
-
-```bash
-# Run tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
-```
+---
 
 ## 🌱 Database Seeding
-
-The seed file creates:
-- 1 Admin user
-- 10+ Medicine categories
-- 50+ Sample medicines
 
 ```bash
 npx prisma db seed
 ```
 
-**Admin Credentials (from seed):**
+Creates: 1 Admin account · 10+ medicine categories · 50+ sample medicines
+
+**Seeded Admin Credentials:**
 ```
-Email: admin@medistore.com
+Email:    admin@medistore.com
 Password: 11223344
 ```
 
-## 📝 API Response Format
+---
 
-### Success Response
-```json
-{
-  "ok": true,
-  "status": 200,
-  "message": "Success message",
-  "data": {
-    // Response data
-  }
-}
-```
+## 📜 NPM Scripts
 
-### Error Response
-```json
-{
-  "ok": false,
-  "status": 400,
-  "message": "Error message",
-  "error": {
-    "details": "Detailed error information"
-  }
-}
-```
-
-## 🔗 Links
-
-- **Frontend Repository:** [MediStore-Frontend](https://github.com/ambakhtiar/MediStore-Frontend)
-- **Live Backend:** [medistore-server-sepia.vercel.app](https://medistore-server-sepia.vercel.app)
-- **Live Frontend:** [medistore-client-eta.vercel.app](https://medistore-client-eta.vercel.app)
-- **Demo Video:** [Google Drive](https://drive.google.com/file/d/1rUm70KWWNz2Up-CCXjgP0KVZCTt18e9q/view?usp=sharing)
-
-## 👨‍💻 Developer
-
-**Abdullah Muhammad Bakhtiar**
-- GitHub: [@ambakhtiar](https://github.com/ambakhtiar)
-- Project: MediStore Backend API - Programming Hero Assignment 4
-
-## 📄 License
-
-This project is created for educational purposes as part of Programming Hero Full-Stack Web Development Course.
+| Script | Command | Description |
+|---|---|---|
+| `dev` | `tsx watch src/server.ts` | Dev server with hot-reload |
+| `build` | `prisma generate && tsc` | Compile for production |
+| `start` | `node dist/server.js` | Serve production build |
+| `seed` | `prisma db seed` | Seed the database |
 
 ---
 
-Built with 💊 for Programming Hero Assignment 4
+## 🚀 Deployment (Vercel)
+
+1. Push repository to GitHub
+2. Import at [vercel.com/new](https://vercel.com/new)
+3. Set all environment variables in the Vercel dashboard
+4. Click **Deploy** — subsequent pushes to `main` deploy automatically
+
+---
+
+## 🔗 Links
+
+| | |
+|---|---|
+| **Live API** | [medistore-med.vercel.app](https://medistore-med.vercel.app) |
+| **Live Frontend** | [medistore-medicine.vercel.app](https://medistore-medicine.vercel.app) |
+| **Frontend Repo** | [MediStore-Frontend](https://github.com/ambakhtiar/MediStore-Frontend) |
+| **Demo Video** | [Google Drive](https://drive.google.com/file/d/1rUm70KWWNz2Up-CCXjgP0KVZCTt18e9q/view?usp=sharing) |
+
+---
+
+## 📄 License
+
+Distributed under the **MIT License**. See `LICENSE` for details.
+
+---
+
+<div align="center">
+  <p>Designed & developed by <strong>Abdullah Muhammad Bakhtiar</strong></p>
+  <a href="https://github.com/ambakhtiar/MediStore-Backend">Backend</a> ·
+  <a href="https://github.com/ambakhtiar/MediStore-Frontend">Frontend</a> ·
+  <a href="https://medistore-medicine.vercel.app">Live Demo</a>
+</div>
