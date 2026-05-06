@@ -7,6 +7,7 @@ import { notFound } from "./middleware/notFound";
 import errorHandler from "./middleware/globalErrorHandler";
 
 const app: Application = express();
+
 // app.use(cors({
 //     origin: process.env.FRONTEND_URL || "http://localhost:3000",
 //     credentials: true,
@@ -43,7 +44,7 @@ app.use(
     }),
 );
 
-
+app.set('trust proxy', true);
 app.all("/api/auth/*splat", toNodeHandler(auth));
 app.use(express.json());
 

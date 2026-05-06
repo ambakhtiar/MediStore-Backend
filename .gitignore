@@ -5,3 +5,23 @@ node_modules
 src/generated/prisma
 
 .vercel
+
+# Auto-generated agent rules (personalized per developer)
+.brainsync/agent-rules.md
+
+# Auto-generated AI agent exclusions
+.cursorrules
+.clineRules
+.agent/
+.windsurfrules
+.gemini/
+.cline/ 
+.agent-mem
+.agents
+.cursor
+.brainsync 
+.vscode
+AGENT.md
+CLAUDE.md
+
+.agent-mem/

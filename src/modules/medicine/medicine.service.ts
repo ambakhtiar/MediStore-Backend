@@ -131,7 +131,7 @@ const getMedicinesBySeller = async (sellerId: string | undefined, filters: Parti
         } = filters as any;
 
         // Build where clause scoped to seller
-        const andConditions: MedicineWhereInput[] = [{ sellerId }];
+        const andConditions: MedicineWhereInput[] = [{ sellerId, isActive: true }];
 
         if (search) {
             andConditions.push({
@@ -274,13 +274,38 @@ const updateMedicine = async (id: string, data: Medicine, sellerId: string) => {
 };
 
 const deleteMedicine = async (id: string, sellerId: string) => {
-    const medicine = await prisma.medicine.findUnique({ where: { id } });
+    const medicine = await prisma.medicine.findUnique({ 
+        where: { id },
+        include: {
+            _count: {
+                select: { orderItems: true }
+            }
+        }
+    });
+    
     if (!medicine) throw new ServiceError("Medicine not found", 404);
     if (medicine.sellerId !== sellerId) throw new ServiceError("Unauthorized", 403);
 
     try {
-        return await prisma.medicine.delete({ where: { id } });
+        // If medicine has been ordered, we must NOT hard-delete it to preserve order history
+        if (medicine._count.orderItems > 0) {
+            return await prisma.medicine.update({
+                where: { id },
+                data: { isActive: false }
+            });
+        }
+
+        // If no orders, we can safely delete. 
+        // First clean up related items that might block deletion (CartItems, Reviews)
+        await prisma.$transaction([
+            prisma.cartItem.deleteMany({ where: { medicineId: id } }),
+            prisma.review.deleteMany({ where: { medicineId: id } }),
+            prisma.medicine.delete({ where: { id } })
+        ]);
+        
+        return { message: "Medicine deleted successfully" };
     } catch (err) {
+        console.error("Delete medicine error:", err);
         throw new ServiceError("Database error while deleting medicine", 500);
     }
 };

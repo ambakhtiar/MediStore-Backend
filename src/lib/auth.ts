@@ -24,6 +24,7 @@ export const auth = betterAuth({
             }
         }
     },
+    // baseURL: process.env.FRONTEND_URL || "https://medistore-client-eta.vercel.app",
     trustedOrigins: [
         process.env.FRONTEND_URL || "http://localhost:3000",
         process.env.BETTER_AUTH_URL || "http://localhost:5000",
@@ -50,6 +51,10 @@ export const auth = betterAuth({
         useSecureCookies: process.env.NODE_ENV === "production",
         crossSubDomainCookies: {
             enabled: false,
+        },
+        defaultCookieAttributes: {
+            sameSite: "none", // For Cross-Origin 
+            secure: true,     // if sameSite "none" then secure is "true"
         },
         disableCSRFCheck: true, // Allow requests without Origin header (Postman, mobile apps, etc.)
     },

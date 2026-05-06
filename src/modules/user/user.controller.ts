@@ -12,9 +12,26 @@ const sendError = (res: Response, err: any, fallback: string) => {
 };
 
 
+import paginationSortingHelpers from "../../helpers/paginationSortingHelpers";
+
 const getAllUsers = async (req: Request, res: Response) => {
     try {
-        const users = await userService.getAllUsers();
+        const { search, role, status } = req.query;
+        const searchString = typeof search === "string" ? search.trim() : undefined;
+        const roleString = typeof role === "string" ? role.trim() : undefined;
+        const statusString = typeof status === "string" ? status.trim() : undefined;
+
+        const { page, limit, sortBy, sortOrder } = paginationSortingHelpers(req.query);
+
+        const users = await userService.getAllUsers({
+            search: searchString,
+            role: roleString,
+            status: statusString,
+            page,
+            limit,
+            sortBy,
+            sortOrder
+        });
         return send(res, 200, "Users fetched successfully", users);
     } catch (err) {
         return sendError(res, err, "Failed to fetch users");

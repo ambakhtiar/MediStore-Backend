@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { categoryService, ServiceError } from "./category.service";
+import paginationSortingHelpers from "../../helpers/paginationSortingHelpers";
 
 const send = (res: Response, code: number, message: string, data?: any) =>
     res.status(code).json({ message, data });
@@ -11,9 +12,22 @@ const sendError = (res: Response, err: any, fallback: string) => {
 };
 
 // Public
-const getAllCategories = async (_req: Request, res: Response) => {
+const getAllCategories = async (req: Request, res: Response) => {
     try {
-        const categories = await categoryService.getAllCategories();
+        const { search } = req.query;
+        const searchString = typeof search === "string" ? search.trim() : undefined;
+
+        const { page, limit, sortBy, sortOrder } = paginationSortingHelpers(req.query);
+
+        const categories = await categoryService.getAllCategories({
+            search: searchString,
+            isPrescriptionRequired: req.query.isPrescriptionRequired === "true" ? true :
+                req.query.isPrescriptionRequired === "false" ? false : undefined,
+            page,
+            limit,
+            sortBy,
+            sortOrder
+        });
         return send(res, 200, "Categories fetched successfully", categories);
     } catch (err) {
         return sendError(res, err, "Failed to fetch categories");

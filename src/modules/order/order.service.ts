@@ -176,47 +176,101 @@ const createOrder = async (userId: string, data: CreateOrderType) => {
  * - If seller: return orders that contain medicines sold by this seller
  * - If customer: return user's orders
  */
-const listOrders = async (user: User, opts: { skip?: number; take?: number } = {}) => {
+type OrderFilters = {
+    search?: string | undefined;
+    status?: string | undefined;
+    startDate?: string | undefined;
+    endDate?: string | undefined;
+    page?: number | undefined;
+    limit?: number | undefined;
+    sortBy?: string | undefined;
+    sortOrder?: string | undefined;
+    minTotal?: number | undefined;
+    maxTotal?: number | undefined;
+};
+
+const listOrders = async (user: User, filters: OrderFilters = {}) => {
     try {
-        const { skip = 0, take = 50 } = opts;
+        const { search, status, startDate, endDate, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc", minTotal, maxTotal } = filters;
+        const skip = (page - 1) * limit;
 
-        if (user.role === "ADMIN") {
-            const orders = await prisma.order.findMany({
-                skip,
-                take,
-                orderBy: { createdAt: "desc" },
-                include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true, email: true } } },
-            });
-            return orders;
-        }
+        const where: any = {};
 
+        // Role-based scoping
         if (user.role === "SELLER") {
-            // find orders that include at least one medicine from this seller
-            const orders = await prisma.order.findMany({
-                skip,
-                take,
-                where: {
-                    items: {
-                        some: {
-                            medicine: { sellerId: user.id },
-                        },
+            where.items = {
+                some: {
+                    medicine: {
+                        sellerId: user.id,
                     },
                 },
-                orderBy: { createdAt: "desc" },
-                include: { items: { include: { medicine: true } }, user: { select: { id: true, name: true } } },
-            });
-            return orders;
+            };
+        } else if (user.role === "CUSTOMER") {
+            where.userId = user.id;
         }
 
-        // CUSTOMER
-        const orders = await prisma.order.findMany({
-            skip,
-            take,
-            where: { userId: user.id },
-            orderBy: { createdAt: "desc" },
-            include: { items: { include: { medicine: true } } },
-        });
-        return orders;
+        // Search (by Order ID, User Name, Email, Shipping Name, Phone, or Product Name)
+        if (search) {
+            where.OR = [
+                { id: { contains: search, mode: "insensitive" } },
+                { user: { name: { contains: search, mode: "insensitive" } } },
+                { user: { email: { contains: search, mode: "insensitive" } } },
+                { shippingName: { contains: search, mode: "insensitive" } },
+                { shippingPhone: { contains: search, mode: "insensitive" } },
+                { items: { some: { medicine: { name: { contains: search, mode: "insensitive" } } } } },
+            ];
+        }
+
+        // Status filter
+        if (status) {
+            where.status = status;
+        }
+
+        // Date range filter
+        if (startDate || endDate) {
+            where.createdAt = {};
+            if (startDate) where.createdAt.gte = new Date(startDate);
+            if (endDate) where.createdAt.lte = new Date(endDate);
+        }
+
+        // Total amount filter
+        if (minTotal !== undefined || maxTotal !== undefined) {
+            where.total = {};
+            if (minTotal !== undefined) where.total.gte = minTotal;
+            if (maxTotal !== undefined) where.total.lte = maxTotal;
+        }
+
+        const [items, total] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { [sortBy]: sortOrder },
+                include: {
+                    items: {
+                        include: {
+                            medicine: {
+                                select: {
+                                    id: true, name: true, imageUrl: true, genericName: true, manufacturer: true, sellerId: true
+                                },
+                            }
+                        }
+                    },
+                    user: { select: { id: true, name: true, email: true } }
+                },
+            }),
+            prisma.order.count({ where }),
+        ]);
+
+        return {
+            items,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     } catch (err: any) {
         console.error("listOrders error:", err);
         throw new ServiceError("Failed to list orders", 500);

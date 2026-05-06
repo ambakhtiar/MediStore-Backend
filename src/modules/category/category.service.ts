@@ -40,11 +40,51 @@ const ensureUniqueSlug = async (base: string) => {
     }
 };
 
-const getAllCategories = async (): Promise<Category[]> => {
+type CategoryFilters = {
+    search?: string | undefined;
+    isPrescriptionRequired?: boolean | string | undefined;
+    page?: number | undefined;
+    limit?: number | undefined;
+    sortBy?: string | undefined;
+    sortOrder?: string | undefined;
+};
+
+const getAllCategories = async (filters: CategoryFilters = {}) => {
     try {
-        return await prisma.category.findMany({
-            orderBy: { createdAt: "desc" },
-        });
+        const { search, isPrescriptionRequired, page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = filters;
+        const skip = (page - 1) * limit;
+
+        const where: any = {};
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+            ];
+        }
+
+        if (isPrescriptionRequired !== undefined) {
+            where.isPrescriptionRequired = isPrescriptionRequired === 'true' || isPrescriptionRequired === true;
+        }
+
+        const [items, total] = await Promise.all([
+            prisma.category.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { [sortBy]: sortOrder },
+            }),
+            prisma.category.count({ where }),
+        ]);
+
+        return {
+            items,
+            pagination: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     } catch (err) {
         console.error("getAllCategories error:", err);
         throw new ServiceError("Database error while fetching categories", 500);
